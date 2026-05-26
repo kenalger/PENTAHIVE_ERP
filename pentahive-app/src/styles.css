@@ -1,0 +1,233 @@
+/* ============================================================
+   PentaHive ERP — global design system
+   Tokens ported from the RJL ERP mockup (graincore_erp_world_class).
+   Light theme is default; data-theme="dark" overrides at the root.
+   Fonts are loaded via <link> in index.html (parallel fetch, not @import).
+   ============================================================ */
+
+:root {
+  /* ── Mockup tokens (light defaults) ── */
+  --void:#F4F6FA; --base:#FFFFFF; --surface:#FFFFFF; --raised:#F1F5F9;
+  --float:#E2E8F0; --border:#E5E9EF; --rim:#CBD5E1; --mist:#94A3B8;
+  --text:#0F172A; --sub:#475569; --dim:#94A3B8; --ghost:#CBD5E1;
+
+  --gold:#F2A841; --gold-d:#C8831A; --gold-bg:rgba(242,168,65,.16); --gold-rim:rgba(242,168,65,.35); --gold-text:#0B1118;
+  --jade:#10B981; --jade-d:#059669; --jade-bg:rgba(16,185,129,.14); --jade-rim:rgba(16,185,129,.32);
+  --sky:#3B82F6; --sky-d:#2563EB; --sky-bg:rgba(59,130,246,.14); --sky-rim:rgba(59,130,246,.32);
+  --rose:#F43F5E; --rose-d:#E11D48; --rose-bg:rgba(244,63,94,.14); --rose-rim:rgba(244,63,94,.32);
+  --teal:#06B6D4; --teal-bg:rgba(6,182,212,.14); --teal-rim:rgba(6,182,212,.32);
+  --violet:#8B5CF6; --violet-bg:rgba(139,92,246,.14); --violet-rim:rgba(139,92,246,.32);
+  --amber:#F59E0B; --amber-bg:rgba(245,158,11,.16);
+
+  /* Stream tokens (Local / Import) */
+  --local:#16A34A; --local-deep:#15803D; --local-bg:rgba(22,163,74,.10);
+  --import:#2563EB; --import-deep:#1D4ED8; --import-bg:rgba(37,99,235,.10);
+
+  /* Radii / fonts / shadows */
+  --r4:4px; --r6:6px; --r8:8px; --r12:12px;
+  --font:'Plus Jakarta Sans','Inter',ui-sans-serif,system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --shadow:0 4px 18px rgba(15,23,42,.08); --shadow-lg:0 12px 40px rgba(15,23,42,.12);
+  --row-hover:rgba(15,23,42,.025); --row-border:rgba(15,23,42,.06); --sum-border:rgba(15,23,42,.06);
+
+  /* ── ph-* aliases (kept for Login / ChangePassword / Dashboard components) ── */
+  --ph-brand-50:#eef2ff; --ph-brand-100:#e0e7ff; --ph-brand-200:#c7d2fe;
+  --ph-brand-500:#6366f1; --ph-brand-600:#4f46e5; --ph-brand-700:#4338ca;
+  --ph-brand-800:#3730a3; --ph-brand-900:#312e81;
+  --ph-accent-500:#2563eb; --ph-accent-600:#1d4ed8; --ph-accent-700:#1e40af;
+  --ph-bg:var(--void); --ph-surface:var(--surface); --ph-surface-2:var(--raised);
+  --ph-border:var(--border); --ph-border-2:var(--rim);
+  --ph-text:var(--text); --ph-text-2:var(--sub); --ph-muted:var(--sub); --ph-faint:var(--dim);
+  --ph-side-bg:#0b1220; --ph-side-bg-2:#111a2e; --ph-side-border:#1f2a44;
+  --ph-side-text:#cbd5e1; --ph-side-text-dim:#94a3b8;
+  --ph-side-active-bg:#1e293b; --ph-side-active-bd:#3b82f6;
+  --ph-success-50:#ecfdf5; --ph-success-600:#16a34a; --ph-success-700:#15803d;
+  --ph-warn-50:#fffbeb; --ph-warn-600:#d97706; --ph-warn-700:#b45309;
+  --ph-danger-50:#fef2f2; --ph-danger-600:#dc2626; --ph-danger-700:#b91c1c;
+  --ph-radius-sm:var(--r6); --ph-radius:10px; --ph-radius-lg:var(--r12);
+  --ph-shadow-sm:0 1px 2px rgba(15,23,42,.06); --ph-shadow:var(--shadow); --ph-shadow-lg:var(--shadow-lg);
+  --ph-side-w:232px; --ph-topbar-h:56px;
+  --ph-font:var(--font); --ph-mono:var(--mono);
+}
+
+/* ── Dark theme override (data-theme="dark") ── */
+html[data-theme="dark"] {
+  --void:#060A0F; --base:#0B1118; --surface:#111820; --raised:#182030;
+  --float:#1E2838; --border:#1F2D3D; --rim:#263548; --mist:#2E4060;
+  --text:#F0F4F8; --sub:#8FA3BF; --dim:#4A6080; --ghost:#2A3F55;
+  --gold-bg:rgba(242,168,65,.08); --gold-rim:rgba(242,168,65,.2);
+  --jade-bg:rgba(16,185,129,.08); --jade-rim:rgba(16,185,129,.2);
+  --sky-bg:rgba(59,130,246,.08); --sky-rim:rgba(59,130,246,.2);
+  --rose-bg:rgba(244,63,94,.08); --rose-rim:rgba(244,63,94,.2);
+  --teal-bg:rgba(6,182,212,.08); --teal-rim:rgba(6,182,212,.2);
+  --violet-bg:rgba(139,92,246,.08); --violet-rim:rgba(139,92,246,.2);
+  --amber-bg:rgba(245,158,11,.08);
+  --local-bg:rgba(74,222,128,.08); --import-bg:rgba(96,165,250,.08);
+  --local:#4ade80; --import:#60a5fa;
+  --shadow:0 4px 24px rgba(0,0,0,.4); --shadow-lg:0 8px 48px rgba(0,0,0,.6);
+  --row-hover:rgba(255,255,255,.025); --row-border:rgba(31,45,61,.6); --sum-border:rgba(31,45,61,.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--sky); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3, h4, h5 {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   Form primitives — used by Login / ChangePassword / module forms
+   ============================================================ */
+.ph-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.ph-label {
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--sub);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.ph-input,
+.ph-select,
+.ph-textarea {
+  width: 100%;
+  border: 1px solid var(--rim);
+  background: var(--raised);
+  color: var(--text);
+  border-radius: var(--r6);
+  padding: 0.6rem 0.75rem;
+  font: 400 0.9rem var(--font);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ph-input::placeholder, .ph-textarea::placeholder { color: var(--dim); }
+.ph-input:focus, .ph-select:focus, .ph-textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-bg);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.ph-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--r6);
+  padding: 0.55rem 0.95rem;
+  font: 600 0.875rem var(--font);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  white-space: nowrap;
+}
+.ph-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.ph-btn:active:not(:disabled) { transform: translateY(1px); }
+.ph-btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-d));
+  color: var(--gold-text);
+  box-shadow: 0 2px 12px rgba(242,168,65,.25);
+}
+.ph-btn-primary:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(242,168,65,.4); transform: translateY(-1px); }
+.ph-btn-secondary {
+  background: var(--surface); color: var(--text); border-color: var(--rim);
+}
+.ph-btn-secondary:hover:not(:disabled) { background: var(--raised); border-color: var(--mist); }
+.ph-btn-ghost { background: transparent; color: var(--sub); border: 1px solid var(--rim); }
+.ph-btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--mist); background: var(--surface); }
+.ph-btn-block { width: 100%; }
+.ph-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+
+/* ============================================================
+   Alerts
+   ============================================================ */
+.ph-alert {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--r6);
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+}
+.ph-alert-error   { background: var(--rose-bg);  color: var(--rose);  border-color: var(--rose-rim); }
+.ph-alert-warn    { background: var(--gold-bg);  color: var(--gold);  border-color: var(--gold-rim); }
+.ph-alert-success { background: var(--jade-bg);  color: var(--jade);  border-color: var(--jade-rim); }
+.ph-alert-info    { background: var(--sky-bg);   color: var(--sky);   border-color: var(--sky-rim); }
+
+/* ============================================================
+   Cards
+   ============================================================ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r12);
+  padding: 22px;
+}
+.card-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.card-t { font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .8px; }
+.card-actions { display: flex; gap: 8px; align-items: center; }
+
+/* KPI cards */
+.krow { display: grid; gap: 14px; margin-bottom: 20px; }
+.k4 { grid-template-columns: repeat(4, 1fr); }
+.k3 { grid-template-columns: repeat(3, 1fr); }
+.k2 { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 1100px) { .k4 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .k4, .k3, .k2 { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   Tables
+   ============================================================ */
+.tw { overflow-x: auto; border-radius: var(--r8); }
+table.ph-table { width: 100%; border-collapse: collapse; }
+.ph-table thead tr { border-bottom: 1px solid var(--border); }
+.ph-table th {
+  font-size: 10px; font-weight: 700; color: var(--dim);
+  text-transform: uppercase; letter-spacing: .8px;
+  padding: 10px 14px; text-align: left; white-space: nowrap;
+}
+.ph-table td {
+  padding: 11px 14px; font-size: 12.5px; color: var(--text);
+  border-bottom: 1px solid var(--row-border);
+  vertical-align: middle; white-space: nowrap;
+}
+.ph-table tbody tr { cursor: pointer; transition: background .12s; }
+.ph-table tbody tr:hover { background: var(--row-hover); }
+.ph-table tr:last-child td { border-bottom: none; }
+
+/* ============================================================
+   Utility
+   ============================================================ */
+.mono { font-family: var(--mono); font-size: 12px; }
+.sub  { color: var(--sub); }
+.dim  { color: var(--dim); }
+.tr   { text-align: right; }
+.tg   { color: var(--jade); }
+.ta   { color: var(--gold); }
+.tb   { color: var(--sky); }
+.tr2  { color: var(--rose); }
+.fw6  { font-weight: 600; }
+.fw7  { font-weight: 700; }
+.ph-muted { color: var(--sub); }
+.ph-mono  { font-family: var(--mono); }
+.ph-row   { display: flex; align-items: center; gap: 0.75rem; }
+.ph-col   { display: flex; flex-direction: column; gap: 0.75rem; }
+.ph-grow  { flex: 1; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--rim); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mist); }
+::-webkit-scrollbar-track { background: transparent; }
