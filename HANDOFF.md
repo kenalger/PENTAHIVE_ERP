@@ -1,10 +1,181 @@
 # PENTAHIVE_ERP — Build Hand-off
 
-Date: 2026-05-26 (last updated)
+Date: 2026-05-27 (last updated)
 Source skills: `Skill/auth.md` (`ErpPentaHive`), `Skill/RJL-ERP-BUILD-TODO.md` (overall roadmap)
 Generated under: `pentahive-app/`
 
 > The full ERP roadmap and what's still open lives in `Skill/RJL-ERP-BUILD-TODO.md`. That file now marks the project-setup, Supabase wiring, and auth phases as **DONE**, and tracks remaining modules (suppliers, customers, items, procurement flow, sales flow, etc.). This hand-off documents the *implementation* — what's on disk, how to run it, what's deployed where.
+
+## End-to-end verification checklist
+
+A repeatable walkthrough of everything that's been built. Each step is concrete (specific clicks → specific expected result). Steps are ordered so later ones consume data created by earlier ones — work top-to-bottom and tick each box as it passes.
+
+> **Prereqs:** dev server running (`ng serve` from `pentahive-app/`), real Supabase URL + anon key in `environment.ts`, signed-in admin (`admin@gmail.com` / `123456`).
+
+### 1. Auth, workspace picker, shell, theme
+
+- [ ] Visit `/` → redirected to `/login` if signed out, or to the **WorkspacePicker** at `/` if signed in
+- [ ] Sign in with `admin@gmail.com` / `123456` → lands on `/` (WorkspacePicker)
+- [ ] Picker shows two cards: **Milling** (active) and **Hardware** (coming soon, disabled card)
+- [ ] Admin also sees an "Admin Console" tile/link below the cards
+- [ ] Click **Milling** → URL becomes `/milling/dashboard`, shell renders with Milling sidebar
+- [ ] Sidebar logo shows the Milling icon + name; sidebar footer has "⇆ Switch workspace" link
+- [ ] User menu (avatar in topbar) shows: Settings, Admin Console (admin-only), Switch workspace, Logout
+- [ ] Sidebar shows 8 groups (Overview, Operations, Sales, Procurement, Importation, Accounting, Treasury, HR & Reports) — **no Admin group** in the sidebar (it moved to the user menu)
+- [ ] Topbar breadcrumb format: `Milling · <Group>` (e.g. "Milling · Sales")
+- [ ] Click "⇆ Switch workspace" in the sidebar footer OR in the user menu → returns to `/` picker
+- [ ] Theme toggle in topbar flips light ↔ dark; preference persists across reloads
+- [ ] User menu → **Logout** → bounces to `/login`
+
+### 1a. Workspace access enforcement
+
+- [ ] Sign out → sign in as a non-admin without any milling-page bundle → Picker shows **no workspaces** + "ask an administrator" message
+- [ ] As that non-admin, navigate directly to `/milling/dashboard` → `workspaceGuard` redirects back to `/`
+- [ ] Sign back in as admin → use Admin Console → assign that user a bundle with at least one milling page → sign in as that user again → Milling card now visible in picker, `/milling/*` accessible
+
+### 2. Master data (Sidebar → Procurement / Sales groups)
+
+- [ ] **Suppliers** → ＋ Add Supplier → BIR-registered local paddy supplier → row appears, KPI "Total" + "BIR" both increment
+- [ ] Add a **non-BIR** supplier → bottom EWT-compliance banner appears, "EWT Flagged" KPI = 1
+- [ ] Add a **foreign** supplier (origin = `Thailand`) → "Foreign" KPI increments
+- [ ] **Customers** → ＋ New Customer → normal active customer → KPI "Total Customers" = 1, "Credit Hold" = 0
+- [ ] Add a customer with `status = credit_hold` → "Credit Hold" KPI = 1, row shows the 🔒 badge
+- [ ] **Items** → ＋ New Item → milled rice, MT, with a last price → "Rice" KPI = 1
+- [ ] **Warehouses** → ＋ New Warehouse → e.g. `WH-A` / capacity 1000 MT → "Total Capacity" = 1,000 MT
+
+### 3. Procurement chain (PR → PO → GRN)
+
+- [ ] **Purchase Requests** → ＋ New PR → add 2 line items → click **Submit for canvass** → row appears with status pill "For Canvass"
+- [ ] **Canvasses** → ＋ New Canvass → the PR appears in the dropdown → save → row shows status "Open"
+- [ ] **Purchase Orders** → ＋ New PO → pick the non-BIR supplier from step 2 → add lines → save
+  - Stream auto-set based on supplier origin
+  - EWT amount computed in modal subtotal
+  - EWT compliance banner appears at bottom listing this PO
+- [ ] On that PO row click **Approve** → status pill flips "Pending Approval" → "Approved"
+- [ ] **Goods Receipts** → ＋ New GRN → pick the approved PO → received qty defaults to PO qty, change one to be less than ordered
+  - **Variance** column updates live in the modal
+  - Click **Post GRN** → PO status flips to "Received" on the PO page
+
+### 4. Sales chain (SO → Delivery)
+
+- [ ] **Sales Orders** → ＋ New SO → pick the normal customer from step 2 → add lines → **Confirm SO** → row appears, "Revenue MTD" KPI updates
+- [ ] Open a new SO modal and pick the **credit-hold** customer → red banner appears, **Confirm** button is disabled, **Save Draft** still works
+- [ ] Stream filter pills (All / 🌾 Local / 🚢 Import) swap the visible rows
+- [ ] **Deliveries** → ＋ New DO → pick the confirmed SO → save → row appears with status "Scheduled"
+- [ ] Click **Dispatch** → status "In Transit", tracker view stepper advances
+- [ ] Click **Mark Delivered** → status "Delivered"
+
+### 5. Inventory & operations
+
+- [ ] **Inventory** → ＋ New SKU → assign to `WH-A` → on_hand 100 MT, unit cost ₱40,000 → row appears in 🌾 Local Stock, total_value = ₱4,000,000
+- [ ] Warehouse utilization bar shows the new stock (100/1000 = 10%)
+- [ ] Stream filter pills work (All / Local / Import)
+- [ ] Click **Adjust** → choose Dispatch, qty 30 → on_hand drops to 70, status pill recomputes
+- [ ] Adjust again → Receipt 50 → on_hand 120
+- [ ] **Weighbridge** → ＋ New Ticket → two-way, gross 12,000 kg, tare 5,000 kg → modal shows net 7,000 → save → KPI "Tickets Today" = 1
+- [ ] **Milling → Internal Batches** → ＋ New Batch → sacks 200, kg/sack 50, rice out 7 MT → modal shows recovery ~70% → save → Start → Mark Completed
+- [ ] **Milling → Toll Milling** → ＋ New Toll Job → customer name, sacks 100, price/sack ₱50 → modal shows total ₱5,000 → save
+- [ ] **Quality Inspection** → ＋ New Inspection → pick a GRN, moisture 15.5%, impurity 1.2% → row turns red on moisture + impurity (limits 14% / 1%)
+- [ ] Add another with moisture 13% → row stays green; pass-rate KPI updates accordingly
+
+### 6. Side modules (Vendos)
+
+- [ ] **Vendos → Machines tab** → ＋ New Vendo → e.g. `VND-001 / Office water` → row appears, KPI "Total Machines" = 1
+- [ ] Switch to **Cash Movements tab** → empty state shows
+- [ ] ＋ New Entry → income, ₱500, category "Coin drop" → row appears
+- [ ] ＋ New Entry → expense, ₱200, category "Refill" → row appears
+- [ ] KPIs: Income MTD = ₱500, Expenses MTD = ₱200, Net MTD = ₱300
+- [ ] Filter dropdown → pick that machine → KPIs unchanged (filtered = total here)
+- [ ] Switch back to **Machines tab** → that vendo's per-row columns now show +₱500 / -₱200 / +₱300
+
+### 7. Computed views (verify via DB)
+
+From `pentahive-app/`:
+
+```bash
+node --env-file=.env --input-type=module -e "import sql from './db.js'; \
+  console.log('v_customer_ar:',  await sql\`select * from public.v_customer_ar order by ar_balance desc limit 5\`); \
+  console.log('v_customer_ytd:', await sql\`select * from public.v_customer_ytd where ytd_sales > 0 limit 5\`); \
+  console.log('v_inventory_value_by_stream:', await sql\`select * from public.v_inventory_value_by_stream\`); \
+  console.log('v_revenue_daily_by_stream:',   await sql\`select * from public.v_revenue_daily_by_stream limit 10\`); \
+  await sql.end({timeout:5});"
+```
+
+- [ ] `v_customer_ar` returns one row per customer; `ar_balance` is 0 for any without invoices (expected — invoice UI not built yet)
+- [ ] `v_customer_ytd` shows your SO totals for the customer used in step 4 (`ytd_sales` > 0, `ytd_order_count` ≥ 1)
+- [ ] `v_inventory_value_by_stream` shows `local` row with `total_value` ≈ ₱4.8M (120 MT × ₱40k)
+- [ ] `v_revenue_daily_by_stream` shows today's date with your SO total
+
+### 8. Audit trail (activity_log)
+
+The trigger captured all of the above as it happened. From `pentahive-app/`:
+
+```bash
+node --env-file=.env --input-type=module -e "import sql from './db.js'; \
+  const c = await sql\`select count(*)::int as n from public.activity_log\`; \
+  console.log('total entries:', c[0].n); \
+  const recent = await sql\`select entity, action, ts from public.activity_log order by ts desc limit 10\`; \
+  console.log('recent:', recent); \
+  await sql.end({timeout:5});"
+```
+
+- [ ] `total entries > 0` — should be at least ~25-40 by this point
+- [ ] Recent list shows your last operations: `goods_receipts insert`, `inventory update`, `vendo_entries insert`, etc.
+- [ ] Each row has a user_id matching `admin@gmail.com`'s UUID
+
+### 9. Access-control enforcement (smoke test)
+
+To prove RLS is actually enforced (not just configured):
+
+```bash
+node --env-file=.env --input-type=module -e "import sql from './db.js'; \
+  const uid = (await sql\`select id from auth.users where email='admin@gmail.com'\`)[0].id; \
+  console.log('admin can view suppliers:', (await sql\`select public.can_access(\${uid}, 'suppliers', 'view') as ok\`)[0].ok); \
+  console.log('admin can approve POs:',    (await sql\`select public.can_access(\${uid}, 'purchase-orders', 'approve') as ok\`)[0].ok); \
+  console.log('admin can enter admin-users page:', (await sql\`select public.can_enter_page(\${uid}, 'admin-users') as ok\`)[0].ok); \
+  console.log('admin can enter nonexistent page:', (await sql\`select public.can_enter_page(\${uid}, 'no-such-page') as ok\`)[0].ok); \
+  await sql.end({timeout:5});"
+```
+
+- [ ] Admin returns `true` on every access call (role bypass works)
+- [ ] Nonexistent page returns `false` (defensive)
+
+### 10. Admin page (`/admin/users`, `/admin/roles`, `/admin/access`)
+
+Sidebar Admin group → three links to the same tabbed page.
+
+- [ ] Sign in as `admin@gmail.com` → Admin group visible in sidebar with 3 items
+- [ ] Sign out → sign in as a non-admin user (create one first with the Create User form, then assign them only `user` role) → Admin group **hidden** from sidebar
+- [ ] As that non-admin, try navigating directly to `/admin/users` → redirected back to `/dashboard` by `pageAccessGuard`
+- [ ] Sign back in as admin → /admin/users → 3 KPIs at top, Create User form, full users table
+- [ ] **Users tab:** create a new user (if Edge Function deployed) → temp password shown once; table refreshes with new row showing "no role" + 0 bundles
+- [ ] **Roles tab:** click × on a non-admin user's role chip → it disappears; click dropdown + Assign → role added back. KPI cards on Users tab update.
+- [ ] Roles tab → try to × your own admin role → blocked with a warning banner (last-admin protection)
+- [ ] **Access tab:** Catalog shows `all_access` bundle; click Show permissions → 28-row matrix expands; Hide collapses it
+- [ ] Access tab → assign a bundle to the test user → chip appears; click × → chip disappears
+- [ ] Open DevTools → Network → confirm writes hit `user_roles` / `user_access` tables directly (not the Edge Function)
+- [ ] **DB-side enforcement check:** in Supabase SQL editor as a non-admin, run `select * from public.users` → only your own row visible (RLS still blocks)
+
+### 11. Settings page (`/settings`)
+
+Click the user icon in the topbar → Settings.
+
+- [ ] Left-nav shows 4 sections: Profile · Security · Appearance · Notifications
+- [ ] **Profile** → email is read-only; change Display Name and click Save → green confirmation toast; refresh page → name persists
+- [ ] Profile → "My Access" sub-card lists `all_access` (or whatever bundle the admin has assigned to you); admin sees "Full access (role bypass)"
+- [ ] **Security** → enter a new password + confirm → submit button disables until both green ticks → click Update → success message; sign out and back in with the new password
+- [ ] **Appearance** → click Light/Dark → flips theme immediately and matches the topbar toggle state; reload preserves the choice
+- [ ] Appearance → toggle Table density → `<html>` element gets `data-density="compact"` attribute (verify in DevTools)
+- [ ] Appearance → change Currency → success toast appears; `localStorage.getItem('pentahive-currency')` returns the picked code
+- [ ] **Notifications** → flip any switch → success toast → reload → switch state persists (stored in Supabase `user_metadata`)
+
+### 12. Build & deploy gate
+
+- [ ] `ng build --configuration=development` — passes clean (no TS errors)
+- [ ] Each module loads as its own lazy chunk (~30–70 kB each)
+- [ ] Page reloads with a session active land back inside the shell (no flash of unauthenticated UI)
+
+If every box ticks across all 12 sections, the system is functioning end-to-end across every module that's been built.
 
 ## What was implemented
 
@@ -578,6 +749,451 @@ The app-side pieces are now in place:
 2. **Build the admin/access UI** — picks a user → grid of pages × permissions → calls `manage-access` with `action: 'upsert_grant'`. A route is reserved (`/admin/access`) but no component yet.
 3. **Add `pageAccessGuard` to remaining protected routes** — currently only `/admin/users` uses it. Every new module page should attach `data: { pageCode: '<seeded-code>' }` and add both guards.
 4. **Migrate `create-user`'s allowlist → `has_role`** — minor cleanup; mirror the pattern from `manage-access`.
+
+## Create-user button — now functional without the Edge Function (2026-05-27)
+
+The **＋ Create user** button on the Admin Console (now `/milling/admin`) creates an `auth.users` row + matching `auth.identities` row directly via a `SECURITY DEFINER` Postgres function. The `create-user` Edge Function is **no longer required** for user provisioning.
+
+### Migration
+
+`pentahive-app/supabase/migrations/20260527000005_admin_create_user_rpc.sql` — applied.
+
+```sql
+public.admin_create_user(p_email text) returns table(user_id uuid, email text, temp_password text)
+  SECURITY DEFINER, granted to authenticated.
+```
+
+Behavior:
+1. **Authorize** — raises `forbidden` if caller is not in the `admin` role (via `has_role(auth.uid(), 'admin')`).
+2. **Validate** — normalizes email (lowercase + trim), regex-validates basic shape, raises if blank or invalid.
+3. **Duplicate check** — raises if an `auth.users` row already exists with that email.
+4. **Temp password** — 14 chars drawn from a readable alphabet (no ambiguous `0OIl/1`).
+5. **Insert into `auth.users`** — sets `email_confirmed_at = now()` (no verification email), bcrypt hashes the temp password via `extensions.crypt(...)`, stamps `raw_user_meta_data.must_change_password = true`.
+6. **Insert into `auth.identities`** — required by some Supabase Auth versions for email/password sign-in to work.
+7. **Returns** the new user_id, normalized email, and temp_password — admin UI displays the temp password ONCE.
+
+The new user is forced through `/change-password` on first login because of the `must_change_password` flag (existing `authGuard` honors this).
+
+### Admin UI change
+
+`src/app/admin/admin.ts createUser()` now calls:
+
+```ts
+const { data, error } = await supabase.rpc('admin_create_user', { p_email: email });
+// data is a one-row table: { user_id, email, temp_password }
+```
+
+Replaced the previous `supabase.functions.invoke('create-user', …)` call. Error handling strips the Postgres `forbidden:` / `invalid email address:` prefix so the alert reads cleanly.
+
+### What this changes for deployment
+
+- **Edge Function `create-user` is no longer on the critical path.** It still works (the source is in `supabase/functions/create-user/`), but the admin UI doesn't depend on it being deployed. You can defer `supabase functions deploy create-user` indefinitely now.
+- **All `auth.users` provisioning is in-database.** The `seed_admin_user` migration uses the same pattern (direct `auth.users` insert), so this is consistent with how the seed admin was created.
+
+### Verify it works
+
+In the admin UI:
+1. Sign in as `admin@gmail.com` → open **Milling** workspace → user menu → **Admin Console** (or directly `/milling/admin`)
+2. Users tab → Create user form → enter `test1@example.com` → click Create
+3. Green success panel shows the email + a 14-char temp password. **Copy it now** — it won't be shown again.
+4. The "All Users" table refreshes with the new row (no role, no bundles)
+5. Sign out → sign in as `test1@example.com` with the temp password → forced to `/change-password` → set a real password → lands on `/` workspace picker
+6. Picker shows **no workspaces** (no bundles assigned yet) — sign back in as admin and assign a bundle from the Access tab; refresh; Milling card appears.
+
+### Edge Function status
+
+The original Edge Function `supabase/functions/create-user/index.ts` is still on disk and still functional if deployed. It does the same work via the Supabase Auth Admin API. Pick whichever path you prefer for future user provisioning — they don't conflict.
+
+## Workspaces architecture — DONE (2026-05-27)
+
+The app is now multi-workspace. After sign-in, users land on a **workspace picker** at `/` and choose between **Milling** (the rice/grain ERP we built) and **Hardware** (placeholder for the next workspace). Each workspace has its own URL prefix and module set.
+
+### URL shape
+
+```
+/login, /change-password         Auth (outside any workspace)
+/                                WorkspacePicker (post-auth landing)
+/milling/<module>                Milling workspace — shell + all ERP modules
+/hardware                        Hardware workspace (stub — "Coming soon")
+/admin/{users,roles,access}      Cross-workspace, admin-only
+/settings                        Cross-workspace user settings
+```
+
+### Migration
+
+`pentahive-app/supabase/migrations/20260527000004_init_workspaces.sql` — applied.
+
+- **`public.workspaces`** catalog table: `code`, `name`, `icon`, `description`, `status` (active / coming_soon / disabled), `sort_order`. Seeded with `milling` (active) and `hardware` (coming_soon).
+- **`pages.workspace`** column (FK → `workspaces.code`, `on delete set null`). All 26 existing module pages tagged `'milling'`. Admin pages (`admin-users`, `admin-roles`, `admin-access`) stay `null` (cross-workspace).
+- **`public.user_has_workspace(uid, code)`** function — `true` if admin OR if user has any bundle granting view on at least one page in that workspace.
+- **`public.user_workspaces(uid)`** function — returns workspaces the user can access, ordered by `sort_order`.
+- RLS on `workspaces` — any signed-in user can SELECT (so the picker can list them).
+
+### Access model
+
+| Who | Milling | Hardware | Admin Console |
+|---|---|---|---|
+| Admin role | ✓ (role bypass) | ✓ (role bypass) | ✓ (role bypass) |
+| User with any milling-page bundle | ✓ | ✗ | ✗ |
+| User with no bundles | ✗ | ✗ | ✗ |
+
+Enforcement:
+- DB layer — `user_has_workspace()` returns false → guard blocks
+- Route layer — new `workspaceGuard` reads `route.data.workspace`, calls `user_has_workspace`, redirects unauthorized to `/`
+- UI layer — WorkspacePicker only renders workspaces the user can see (calls `user_workspaces`)
+
+### Files added
+
+```
+supabase/migrations/20260527000004_init_workspaces.sql  (new)
+src/app/workspace-picker/workspace-picker.ts            (new — post-auth landing)
+src/app/hardware/hardware.ts                            (new — coming-soon stub)
+src/app/workspace.guard.ts                              (new — gates /milling/* and /hardware)
+```
+
+### Files restructured
+
+- **`src/app/app.routes.ts`** — module routes now nested under `/milling`. Three new top-level entries (`/`, `/hardware`, `/milling`) replace the previous single shell at `/`. Admin and Settings stay top-level (cross-workspace).
+- **`src/app/shell/shell.ts`** — workspace-aware. Reads workspace code from the URL's first segment, fetches `workspaces.name/icon` for the sidebar logo + topbar breadcrumb. NAV items use relative paths (`'dashboard'` not `'/dashboard'`); the template prefixes `/<workspace>/`. The Admin link moved out of the sidebar into the user-menu dropdown (cross-workspace, admin-only). New "Switch workspace" footer link at the bottom of the sidebar + in the user menu.
+- **`src/app/login/login.ts`** — redirects to `/` (picker) after sign-in instead of `/dashboard`.
+- **`src/app/dashboard/dashboard.ts`** — internal admin links now point at `/admin/users` / `/admin/access` (cross-workspace paths).
+
+### Verified DB state
+
+```
+workspaces:
+  milling  · 🌾 · Rice mill operations …   · active
+  hardware · 🔧 · Hardware store …          · coming_soon
+
+pages by workspace:
+  milling           26
+  (cross-workspace)  3   (admin-users, admin-roles, admin-access)
+
+user_workspaces(admin@gmail.com): both workspaces returned (admin role)
+```
+
+### What's still to do
+
+- **Hardware workspace** is just a static "Coming Soon" page. Schemas + modules ship in a future turn.
+- **`workspaces.status='coming_soon'`** is enforced only in the picker UI (the card renders disabled). The `/hardware` route itself is reachable for admins because admin bypass returns true from `user_has_workspace`. To fully block, add a status check inside `workspaceGuard`.
+- **Existing modules' internal links** all use absolute paths starting with `/`. If you discover any old-style `/dashboard` / `/suppliers` deep-links inside modules, prefix them with `/milling/`. Audit done on Shell + Dashboard + WorkspacePicker — others should be clean since modules tend not to deep-link laterally.
+
+## Admin page (Users · Roles · Access) — DONE (2026-05-27)
+
+Replaces the old single-purpose admin/users component with a unified tabbed admin page. **Three-layer admin gating** (DB requires_role + Angular pageAccessGuard + in-component check) means non-admins cannot reach or render this page.
+
+### File
+
+`src/app/admin/admin.ts` — single component, three tabs, lazy-loaded.
+
+### Migration
+
+`pentahive-app/supabase/migrations/20260527000003_admin_management.sql` — applied:
+
+- **Relaxed `public.users` SELECT** — admins can now read every user row (previously self-only). Self-read still works for non-admins.
+- **Relaxed `public.user_roles` SELECT** — admins read all assignments. Self-read preserved.
+- **Added `public.user_roles` admin write policy** — `for all` gated by `has_role(auth.uid(), 'admin')`. Admin UI can insert/delete role rows directly via supabase-js.
+- **Relaxed `public.user_access` SELECT** + admin write policy — same shape as user_roles.
+- **Seeded `admin-roles` page** with `requires_role='admin'`. The `all_access` bundle was extended to cover it (admin keeps it on the explicit-assignment list).
+
+### Three-layer admin gating
+
+| Layer | What it does | Where |
+|---|---|---|
+| 1. DB — `pages.requires_role` | `admin-users`, `admin-access`, `admin-roles` all have `requires_role='admin'`. `can_enter_page()` returns `false` for non-admins. | `public.pages` rows |
+| 2. Angular — `pageAccessGuard` | On every navigation, calls `supabase.rpc('can_enter_page', …)`. Non-admin → redirect to `/dashboard`. | `src/app/page-access.guard.ts` + `data: { pageCode, tab }` on each admin route |
+| 3. Component — defensive `auth.isAdmin()` check | If the guard somehow allowed a non-admin through, the template renders an "Admin access required" error instead of the controls. | Wrapper `@if (!auth.isAdmin()) { … } @else { …rest… }` in `admin.ts` |
+
+Plus a fourth layer in effect for *writes* — RLS on `user_roles`, `user_access`, and target tables all check `has_role(auth.uid(), 'admin')`. Even if a non-admin somehow loaded the component and triggered a write, the DB rejects it.
+
+### Routes
+
+Three paths, one component, default tab via `route.data.tab`:
+
+```ts
+{ path: 'admin/users',  loadComponent: …Admin, data: { pageCode: 'admin-users',  tab: 'users' }  }
+{ path: 'admin/roles',  loadComponent: …Admin, data: { pageCode: 'admin-roles',  tab: 'roles' }  }
+{ path: 'admin/access', loadComponent: …Admin, data: { pageCode: 'admin-access', tab: 'access' } }
+```
+
+Sidebar Admin group now has three links (Users / Roles / Access), still only visible to `auth.isAdmin()`.
+
+### Tab: Users
+
+- 3-KPI row: Total Users / Admins / With Bundles
+- **Create User** form at top — calls the existing `create-user` Edge Function. Displays generated temp password in a one-time alert. (Requires the Edge Function to be deployed; if not, the form returns an error with the deploy hint.)
+- **All Users** table — every user with email, full_name, roles (colored pills), and assigned bundles (chips). Read-only view; mutations happen in Roles / Access tabs.
+
+### Tab: Roles
+
+- **Available Roles** — 3 cards (admin/manager/user) with description + count of users holding each.
+- **Role Assignments** table — every user, current role pills with × to remove, dropdown + Assign button to add.
+- **Self-protection** — refuses to let the last admin remove their own admin role (warning banner instead). Always-on guard: even if the user is one of many admins, removing self-admin reloads access immediately so the UI updates.
+
+### Tab: Access Bundles
+
+- Info banner reminding that bundles are developer-authored via migrations — UI only views catalog + manages assignments.
+- **Catalog** — each bundle as a card with description, page count, code chip. Expandable to show the full page × permission matrix.
+- **Bundle Assignments** table — same UX as Roles: chips with × to remove, dropdown + Assign per row. Admin role users show "role bypass — full access" instead of a chip list (their assignments are informational).
+
+### How writes work
+
+All mutations now go directly through `supabase.from('user_roles' | 'user_access').insert/delete(…)` from the browser, gated by the admin-write RLS policies added in the migration. The `manage-access` Edge Function still exists and is functional — it's the right path for server-to-server automation, but the admin UI doesn't need it anymore.
+
+After each mutation, `auth.loadAccess()` is called when the affected user is the current user, so their roles/grants signals refresh immediately.
+
+### Build
+
+`admin` lazy chunk weighs ~33 kB. All three sidebar links route to the same chunk (no duplicate code).
+
+## Settings page — DONE (2026-05-27)
+
+The `/settings` route (linked from the topbar user menu) is now a real component with four sections, navigated via a left vertical nav. Per the user's spec: Profile + Security + Appearance + Notifications (placeholder). Org-level settings deferred to a future `/admin/organization` route.
+
+### File
+
+`src/app/settings/settings.ts` — single standalone component, lazy-loaded. Replaces the previous Placeholder wired to `/settings`.
+
+### Section: Profile
+
+- **Email** — read-only (login identifier; changing requires admin)
+- **Display Name** — editable input bound to `public.users.full_name`. Save button enables only when dirty. Uses the existing column-level grant (`grant update (full_name) on public.users to authenticated`) and self-RLS policy.
+- **User ID** — truncated mono display
+- **Roles** — pills colored by role (admin gold / manager sky / user jade / none rose). Read-only.
+- **My Access** sub-card below — admins see "Full access (role bypass)"; everyone else sees their list of assigned access bundles via `select * from user_access join access_definitions …` (RLS allows self-read).
+
+### Section: Security
+
+- **Change Password** form — same UX as the existing `/change-password` forced flow, but voluntary and doesn't write `must_change_password = false`.
+- Two ph-fields (password + confirm) + live rule list ("min 8 chars" / "passwords match") with green tick animations.
+- Submit button disabled until both rules pass. Calls `supabase.auth.updateUser({ password })`.
+- Success message auto-hides after 3.5s.
+
+### Section: Appearance
+
+- **Theme** — segmented Light/Dark picker. Calls `ThemeService.set(…)` directly (the topbar toggle still works; this is just the in-page mirror).
+- **Table density** — Comfortable / Compact. Writes `localStorage['pentahive-density']` and sets `data-density` on `<html>` so modules can react via `[data-density="compact"]` CSS selectors (no module currently subscribes — wire selectors when needed).
+- **Currency display** — PHP / USD / THB / VND. Writes `localStorage['pentahive-currency']`. Hook into your money formatter when you want it to drive actual display.
+
+### Section: Notifications (placeholder)
+
+- Six toggle switches (purchase orders overdue, inventory low, credit hold, GRN dispute, weekly digest, in-app dot).
+- Banner at top explicitly states: producer rules aren't wired yet, your preferences are saved, no emails/alerts fire until those triggers ship.
+- Storage: writes to `auth.users.user_metadata.notification_prefs` via `supabase.auth.updateUser({ data: {…} })`. Survives reload and is server-side persisted (not just localStorage).
+
+### How it loads
+
+The component reacts to the `auth.user()` signal via `effect()` — when the user is known (post-hydration), it loads:
+1. `public.users.full_name` for the profile section
+2. `public.user_access` joined with `access_definitions` for the "My Access" sub-card
+3. `user_metadata.notification_prefs` from the cached auth user for the notifications section
+
+All three load in parallel-ish (one effect runs each). Persisting writes go to the corresponding store: `public.users` for profile, Supabase Auth for password, localStorage for appearance, `user_metadata` for notifications.
+
+### Build
+
+Lazy chunk `settings` weighs in around 25 kB.
+
+## Side modules + computed views — DONE (2026-05-27)
+
+Three new tables, four reporting views, and an audit-trail trigger now in place. Vendos page upgraded with a Cash Movements tab.
+
+### Migration
+
+`pentahive-app/supabase/migrations/20260527000002_init_side_modules_and_views.sql` — applied.
+
+**New tables:**
+
+| Table | Notes |
+|---|---|
+| `vendo_entries` | Income / expense per vending machine. FK to `vendos` with cascade. RLS via `can_access('vendos', …)`. |
+| `activity_log` | Generic audit trail. `entity` = table name, `entity_id` = row PK, `payload` = jsonb `{before, after}` for UPDATE / `{after}` for INSERT / `{before}` for DELETE. Admin-only SELECT. |
+| `alerts` | Workflow notifications. `target_role` null = visible to everyone; otherwise role-gated via `has_role`. Admin-only writes for now. |
+
+**Audit trail trigger:**
+
+`public.log_activity()` (SECURITY DEFINER, swallows its own errors so audit failures never break the originating operation) is attached as `AFTER INSERT OR UPDATE OR DELETE` to **22 high-value tables**: PR/canvasses/PO/GRN + their lines, SO + lines, deliveries, sales_invoices, collections, inventory + transactions, milling_batches, toll_milling, weighbridge_tickets, quality_inspections, suppliers, customers, items, warehouses, vendos, vendo_entries, user_access, access_definitions.
+
+Every state-changing action now writes a row to `activity_log` with the calling user's UID and a structured before/after payload. Admin viewer page can be built later; the data is being captured starting now.
+
+**Computed views (all `security_invoker = true`, no manual refresh needed):**
+
+| View | What it returns |
+|---|---|
+| `v_customer_ar` | per customer: `ar_balance` (sum of unpaid `sales_invoices.amount_due`), `overdue_count`, `overdue_amount` |
+| `v_customer_ytd` | per customer: `ytd_sales`, `ytd_order_count` (filtered to current calendar year, excludes cancelled/credit_hold) |
+| `v_inventory_value_by_stream` | per stream (local/import): `sku_count`, `total_on_hand_mt`, `total_reserved_mt`, `total_available_mt`, `total_value` |
+| `v_revenue_daily_by_stream` | per (date, stream): `order_count`, `revenue`. Used by the Dashboard trend chart when that lands. |
+
+These are **regular views** (not materialized) — they evaluate live, so AR and YTD are always current. If the SO/invoice volume gets heavy later, swap individual ones to materialized + scheduled refresh.
+
+### Vendos page enhancement
+
+`/vendos` now has two tabs:
+
+1. **Machines** tab (existing list, slightly upgraded)
+   - KPI grid bumped to 4 cards: Total / Active / Needs Attention / **Net Income MTD**
+   - Table now shows per-vendo Income MTD / Expense MTD / Net MTD columns (computed from the joined `vendo_entries` data)
+2. **Cash Movements** tab (new)
+   - KPIs: Income MTD / Expenses MTD / Net MTD / Entries Shown (4-card row)
+   - **Filter by machine** dropdown — KPIs and table re-aggregate live
+   - New Entry modal: pick machine + date + type (income/expense) + category + amount + notes
+   - Pre-fills the machine in the modal when a filter is already active
+
+### Files added/modified
+
+```
+supabase/migrations/20260527000002_init_side_modules_and_views.sql  (new)
+src/app/vendos/vendos.ts                                            (rewritten with tabs)
+```
+
+No new route entries needed — Vendos was already wired; the entries data flows through the same page.
+
+### What's intentionally deferred
+
+- **Activity log viewer UI.** Schema + trigger are live (data is being captured right now). A read-only timeline page at `/admin/activity` is a small follow-up — just query `activity_log order by ts desc limit 200` with optional entity filter.
+- **Alerts producer rules.** No alerts are being generated yet — the table is ready, and rules like "PO overdue → insert alert" or "inventory < reorder_pt → insert alert" can be added as triggers on the source tables. Same for the in-app notification badge in the topbar (`notif-dot` from the mockup).
+- **Views consumption.** The four views are queryable now; Dashboard will pull from them in Phase H.
+
+## Phase E Inventory + Operations — DONE (2026-05-27)
+
+Four more modules wired end-to-end: **Inventory, Weighbridge, Milling (Internal + Toll tabs), Quality Inspection**. That covers every Operations item in the sidebar.
+
+### Migration
+
+`pentahive-app/supabase/migrations/20260527000001_init_inventory_and_operations.sql` — applied. Tables created:
+
+| Table | Notes |
+|---|---|
+| `inventory` | Per-SKU stock per warehouse + stream. `available_mt` = `on_hand_mt - reserved_mt` (generated). `total_value` = `on_hand_mt * unit_cost` (generated). `reorder_pt` for low/critical computation in app. |
+| `inventory_transactions` | Append-only log: receipt / dispatch / adjust / transfer-in / transfer-out. Linked to `sku` (no FK so historical rows survive item deletes). |
+| `weighbridge_tickets` | `net` = `gross - tare` (generated). Modes: single / two-way. Payment: cash / credit. |
+| `milling_batches` | Internal milling. Planned → in_progress → completed. Tracks recovery %, cost per rice sack, total cost. |
+| `toll_milling` | Customer milling (RJL provides the mill, customer keeps the rice). `byproduct_disposition` = customer or rjl. |
+| `quality_inspections` | Linked to GRN (optional). Moisture / impurity / chalkiness / broken percentages. Result: passed / partial_reject / rejected. |
+
+All RLS delegates to `public.can_access(uid, page_code, action)` — same enforcement boundary. The two milling tables (`milling_batches` + `toll_milling`) **share the `'milling'` page code** because the UI is a single tabbed page.
+
+### Angular modules
+
+| Route | Page code | What it does |
+|---|---|---|
+| `/inventory` | `inventory` | Stream-split layout (🌾 Local Stock + 🚢 Import Stock, each with subtotal row), warehouse utilization bars at the top, Adjust modal that writes a row to `inventory_transactions` and updates `on_hand_mt` atomically (best-effort sequential). |
+| `/weighbridge` | `weighbridge` | KPIs (today/MTD/revenue/pending two-way), full ticket register, new-ticket modal with single/two-way modes and live net preview. |
+| `/milling` | `milling` | **Tabbed page**: Internal Batches + Toll Milling. Internal has KPIs (total/in-progress/avg recovery/cost MTD) + status workflow (Start → Mark Completed). Toll has KPIs (jobs MTD/revenue MTD/avg recovery/byproduct disposition). Both modals auto-compute recovery % from `(rice_out / (sacks_in × kg_per_sack))`. |
+| `/quality-inspection` | `quality-inspection` | KPIs (pass rate/rejections/avg moisture), table with red highlighting on moisture > 14% and impurity > 1%, modal linked to GRN picker. |
+
+### Document number series added
+
+`next_doc_no()` now serves: `WT-YYYY-NNNN` (weighbridge), `MB-YYYY-NNNN` (milling batch), `TM-YYYY-NNNN` (toll milling), `QC-YYYY-NNNN` (quality inspection). Series counters auto-create on first use.
+
+### Files added this turn
+
+```
+supabase/migrations/20260527000001_init_inventory_and_operations.sql
+src/app/inventory/inventory.ts
+src/app/weighbridge/weighbridge.ts
+src/app/milling/milling.ts
+src/app/quality-inspection/quality-inspection.ts
+```
+
+Routes updated: 4 placeholder entries swapped for real lazy-loaded modules.
+
+### Build verified
+
+```
+Lazy chunks added this turn:
+  milling             69 kB  (largest — two tabbed sub-pages)
+  inventory           60 kB
+  weighbridge         37 kB
+  quality-inspection  37 kB
+```
+
+### What's intentionally deferred
+
+- **GRN posting → inventory_transactions auto-write.** Schema is ready; the GRN module currently just flips the PO to received without creating inventory rows. This is a small follow-up: in `goods-receipts.ts saveLines()`, after the GRN lines insert, write matching `inventory_transactions` rows with `type='receipt'` and update `inventory.on_hand_mt` per matched SKU.
+- **Stock Transfer modal.** Adjust handles single-warehouse changes; transferring between warehouses needs a 2-row transaction (transfer-out from source + transfer-in to destination). Trivial when needed.
+- **Weighbridge → SO/PO/Toll linkage.** Right now WT is a standalone register. The mockup has weight tickets that link back to a customer/SO or a paddy purchase. Doable when sales-side flows generate more cross-references.
+- **Detailed two-way weigh workflow.** Current modal asks for gross + tare at once. The mockup has gross-then-return-for-tare flow with a "pending tare" state. The schema already has the flag (`mode='two-way' && tare=0` is "pending"); only the UI needs an update step.
+
+## Phase C Procurement + Sales (partial) — DONE (2026-05-27)
+
+Six more modules wired end-to-end: **Purchase Requests, Canvasses, Purchase Orders, Goods Receipts, Sales Orders, Deliveries**. AR and DCPR have schemas (sales_invoices, collections) but UI is deferred to next turn — they need the SO-flow data to render anything useful.
+
+### Migration
+
+`pentahive-app/supabase/migrations/20260526000005_init_procurement_and_sales.sql` — applied. Tables created:
+
+| Table | Header / lines | Notes |
+|---|---|---|
+| `doc_counters` | counter | Backing table for `next_doc_no(series)` — auto-resets per year |
+| `purchase_requests` + `pr_lines` | 1:N | Status: draft → for_canvass → canvassed → approved → converted_to_po → cancelled. `pr_lines.line_total` is a generated column (`qty * est_unit_price`). |
+| `canvasses` + `canvass_items` + `canvass_quotes` | 1:N:N | Status: open → awaiting_approval → awarded → closed → cancelled. Quote/winner UI is deferred (schema is ready). |
+| `purchase_orders` + `po_lines` | 1:N | Status: pending_approval → approved → in_transit → boc_clearance → overdue → received → cancelled. Stream tag (`local`/`import`), EWT fields (`ewt_rate`, `ewt_amount`, `bir_registered`). |
+| `goods_receipts` + `grn_lines` | 1:N | QC: passed/partial_reject/rejected. `grn_lines.variance` is a generated column (`qty_received - qty_po`). |
+| `sales_orders` + `so_lines` | 1:N | Status: draft → confirmed → credit_hold → in_transit → delivered → cancelled. Stream tag. `so_lines.amount` generated. |
+| `deliveries` | header | Status: scheduled → in_transit → delivered → delayed → cancelled. `tracking_steps` jsonb (unused yet). |
+| `sales_invoices` | header | Schema only — UI in next turn (AR). |
+| `collections` | header | Schema only — UI in next turn (DCPR). `net = gross - ewt` generated. |
+
+Plus the **doc-numbering helper**:
+
+```sql
+public.next_doc_no(p_series text) → text
+-- Returns 'PR-2026-0001', 'PO-2026-0001', etc.
+-- Atomic increment per series; resets when year flips. SECURITY DEFINER, granted to authenticated.
+```
+
+### RLS
+
+Every table delegates to `public.can_access(auth.uid(), '<page_code>', '<action>')` — same shape as the master-data tables. Line tables use a single `for all` policy with `'edit'` action (you can't have lines without edit rights on the parent). The procurement / sales gates flow automatically when you author new access bundles.
+
+### Angular modules (live in sidebar)
+
+| Route | What it does | Notable behaviors |
+|---|---|---|
+| `/purchase-requests` | KPIs (drafts/canvassing/converted/aged>7d), table, create modal with dynamic line items | "Save Draft" vs "Submit for canvass" splits the status. Aged > 7 days computed from `created_at`. |
+| `/canvasses` | KPIs, table, create modal (header only). | PR picker is pre-filtered to `status = 'for_canvass'`. Quote entry + winner picking + award action is the next pass. |
+| `/purchase-orders` | KPIs (open/received MTD/overdue/import), table with EWT compliance banner, direct create with line items | Picking a supplier auto-sets `bir_registered`, `ewt_rate`, and stream (import if origin ≠ local). EWT amount computed live on the modal subtotal. Approve button transitions `pending_approval` → `approved`. |
+| `/goods-receipts` | KPIs (MTD/posted/disputes/pass rate), table, create-from-PO with per-line received quantities | PO picker filtered to `approved`, `in_transit`, `boc_clearance`. Variance is a generated DB column. Posting flips the PO to `received`. |
+| `/sales-orders` | KPIs (revenue MTD + Local MTD + Import MTD + Credit Hold), stream filter pills, table, create with lines | **Credit-hold check**: picking a customer whose `status='credit_hold'` blocks "Confirm SO" (Save Draft still works). Shows credit limit / AR balance / available below the customer picker. |
+| `/deliveries` | KPIs (MTD/today/in transit/delayed), table, create from SO, tracker view, Dispatch / Mark Delivered buttons | SO picker filtered to `confirmed`/`in_transit`. Stepper view at the bottom shows the current shipment. |
+
+### Files added this turn
+
+```
+supabase/migrations/20260526000005_init_procurement_and_sales.sql
+src/app/purchase-requests/purchase-requests.ts
+src/app/canvasses/canvasses.ts
+src/app/purchase-orders/purchase-orders.ts
+src/app/goods-receipts/goods-receipts.ts
+src/app/sales-orders/sales-orders.ts
+src/app/deliveries/deliveries.ts
+```
+
+Routes updated: 6 placeholder entries swapped for real lazy-loaded modules.
+
+### What's intentionally deferred
+
+These are flagged with banners in the relevant pages so the user isn't surprised:
+
+1. **Canvass quote entry + winner picking + award → auto-create POs.** Schema is ready; UI is one focused turn. For now, admins create POs directly via the PO page — most companies do this anyway.
+2. **AR (`/accounts-receivable`).** Needs sales_invoices auto-created from confirmed SOs + an aging breakdown view. Schema is in place.
+3. **DCPR (`/dcpr`).** Daily collection + disbursement summary. Needs collections (UI) + close-day logic.
+4. **GRN → inventory_transactions.** Once the inventory module is built (next phase), the GRN posting trigger writes inventory rows. Stub for now.
+5. **Overdue invoice trigger.** A scheduled job (or daily cron) flips `sales_invoices.status` to `overdue` past `due_date`. Build with AR.
+
+### Build verified
+
+```
+Lazy chunks added this turn:
+  sales-orders       55 kB
+  purchase-orders    54 kB
+  deliveries         40 kB
+  purchase-requests  40 kB
+  goods-receipts     40 kB
+  canvasses          31 kB
+```
 
 ## Phase B Master Data — DONE (2026-05-26)
 

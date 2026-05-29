@@ -256,11 +256,11 @@ export class Login {
       return;
     }
 
-    // Verify role + page access before sending the user to the dashboard.
+    // Verify role + page access before sending the user to the workspace picker.
     // onAuthStateChange will fire loadAccess too, but awaiting here guarantees
-    // the dashboard renders with populated signals on first paint.
+    // the picker renders with populated signals on first paint.
     await this.auth.loadAccess();
     this.loading.set(false);
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/']);
   }
 }

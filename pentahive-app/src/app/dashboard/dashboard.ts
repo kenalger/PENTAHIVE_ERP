@@ -63,7 +63,7 @@ import { AuthService } from '../auth.service';
         <div class="card-h">
           <div class="card-t">Page Access</div>
           @if (auth.isAdmin()) {
-            <a class="manage-link" routerLink="/admin/access">Manage</a>
+            <a class="manage-link" routerLink="/admin/access">Manage →</a>
           }
         </div>
 

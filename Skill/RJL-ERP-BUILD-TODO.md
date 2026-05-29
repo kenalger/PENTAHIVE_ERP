@@ -6,6 +6,14 @@
 
 ## ✅ Completed so far (2026-05-26 — late session)
 
+**Workspaces architecture now complete** — `/` is a WorkspacePicker; module routes nested under `/milling/*`; Hardware workspace stub at `/hardware`; `workspaceGuard` + `user_has_workspace(uid, code)` enforce per-workspace access. Admin Console + Settings stay cross-workspace.
+
+**Side modules + computed views now complete** — `vendo_entries`, `activity_log` (with audit trigger on 22 tables), `alerts`, plus 4 views (`v_customer_ar`, `v_customer_ytd`, `v_inventory_value_by_stream`, `v_revenue_daily_by_stream`). Vendos page upgraded with a Cash Movements tab.
+
+**Phase E Inventory + Operations now complete** (Inventory with stream-split + warehouse utilization, Weighbridge, Milling with Internal/Toll tabs, Quality Inspection).
+
+**Phase C Procurement (partial) + Sales (partial) now complete** (PR, Canvass header, PO with EWT, GRN with variance, SO with credit-hold, Delivery with tracker). Schemas for AR + DCPR also live, UI deferred. Doc-numbering helper `next_doc_no(series)` shipped.
+
 **Phase B Master Data now complete** (suppliers, customers, items, warehouses, vendos — full CRUD with KPIs + modals + RLS).
 
 **Phase A Foundation now complete:**
@@ -114,42 +122,37 @@ Write each table as a versioned `.sql` migration. Below is a starting schema —
 <!-- (Moved up — see Master data section above. All five master-data tables are DONE.) -->
 
 ### Procurement
-- [ ] **`purchase_requests`**: id, no, date, requester_id, department, purpose, needed_by, status (`draft|for_canvass|canvassed|approved|converted_to_po|cancelled`), canvass_no, po_no, created_at
-- [ ] **`pr_lines`**: id, pr_id, line_no, description, item_id (nullable), uom, qty, est_unit_price
-- [ ] **`canvasses`**: id, no, date, pr_id, pr_no, currency, vat_treatment, status (`open|awaiting_approval|awarded|closed|cancelled`), created_at
-- [ ] **`canvass_items`**: id, canvass_id, line_no, description, uom, qty, winner_supplier_id (nullable)
-- [ ] **`canvass_quotes`**: id, canvass_item_id, supplier_id, unit_price (numeric)
-- [ ] **`purchase_orders`**: id, no, date, supplier_id, pr_id, canvass_id, category, stream (computed from supplier.origin), total, expected_date, status (`pending_approval|approved|in_transit|boc_clearance|overdue|received|cancelled`), ewt_rate, ewt_amount
-- [ ] **`po_lines`**: id, po_id, line_no, description, uom, qty, unit_price, line_total
-- [ ] **`goods_receipts`**: id, no, date, po_id, qc_result (passed|partial_reject|rejected), warehouse_id, status (posted|dispute), created_at
-- [ ] **`grn_lines`**: id, grn_id, po_line_id, description, uom, qty_po, qty_received
+- [x] **DONE** — `purchase_requests` + `pr_lines` (line_total generated). RLS via can_access('purchase-requests', ...).
+- [x] **DONE** — `canvasses` + `canvass_items` + `canvass_quotes`. RLS via can_access('canvasses', ...). Quote entry / winner picking UI deferred.
+- [x] **DONE** — `purchase_orders` + `po_lines` (line_total generated). Includes `stream` (local/import), `ewt_rate`, `ewt_amount`, `bir_registered` (denormalized from supplier at PO time).
+- [x] **DONE** — `goods_receipts` + `grn_lines` (variance generated). Posting flips PO to received. RLS via can_access('goods-receipts', ...).
 
 ### Sales
-- [ ] **`sales_orders`**: id, no, date, customer_id, stream (`local|import`), total, status (`draft|confirmed|credit_hold|in_transit|delivered|cancelled`), delivery_date
-- [ ] **`so_lines`**: id, so_id, product, grade, qty_bags, price_per_bag, amount, vat
-- [ ] **`sales_invoices`**: id, no, so_id, invoice_amt, vat_amt, amount_due, invoice_date, due_date, status (`current|partial|overdue|paid`)
-- [ ] **`deliveries`**: id, no, so_id, truck_no, driver, destination, dispatch_at, status (`scheduled|in_transit|delivered|delayed`), tracking_steps (jsonb)
-- [ ] **`collections`**: id, or_no, ts, customer_id, stream (denormalized from customer or SO), invoice_id, gross, ewt, net, mode (cash|bank|check|gcash), deposited_to, status, posted_by_id
+- [x] **DONE** — `sales_orders` + `so_lines` (amount generated). Stream tag, credit-hold awareness.
+- [x] **DONE — schema only** — `sales_invoices` (UI in next turn as AR).
+- [x] **DONE** — `deliveries` with tracking_steps jsonb (unused field — populated by next-pass tracker upgrade).
+- [x] **DONE — schema only** — `collections` (UI in next turn as DCPR; `net` generated as `gross - ewt`).
 
 ### Inventory
-- [ ] **`inventory`**: id, sku, product, variety_grade, warehouse_id, stream, on_hand_mt, reserved_mt, available_mt (generated column), unit_cost, total_value (generated), reorder_pt, status (ok|low|critical)
-- [ ] **`inventory_transactions`**: id, sku, type (receipt|dispatch|adjust|transfer), qty, source_table, source_id, ts
+- [x] **DONE** — `inventory` with `available_mt` and `total_value` as generated columns. Status (ok/low/critical) computed app-side from `on_hand_mt` vs `reorder_pt`.
+- [x] **DONE** — `inventory_transactions` (receipt / dispatch / adjust / transfer-in / transfer-out). All qty positive; type carries the sign. SKU is text (not FK) so historical rows survive.
 
 ### Operations
-- [ ] **`weighbridge_tickets`**: id, or_no, ts, plate, customer, mode (single|two-way), gross, tare, net, price, payment, operator, notes
-- [ ] **`milling_batches`**: id, batch_no, date_planned, date_completed, source, variety, sacks_in, kg_per_sack, rice_out, bran_out, husk_out, recovery_pct, cost_per_rice_sack, total_cost, status (planned|in_progress|completed)
-- [ ] **`toll_milling`**: id, or_no, date, customer, variety, sacks_in, kg_per_sack, rice_out, bran_out, husk_out, recovery_pct, price_per_sack, total, byproduct_disposition (customer|rjl)
+- [x] **DONE** — `weighbridge_tickets` with `net` generated. Single + two-way modes.
+- [x] **DONE** — `milling_batches` (internal). Planned → in_progress → completed status workflow with date_completed auto-stamped.
+- [x] **DONE** — `toll_milling` with byproduct disposition (customer/rjl).
+- [x] **DONE — Quality Inspection schema** (`quality_inspections`) — not in original spec but built since the QC sidebar item needed somewhere to live.
 
 ### Side modules
-- [ ] **`vendo_entries`**: id, vendo_id, date, type (income|expense), category, amount, notes
-- [ ] **`activity_log`**: id, user_id, action, entity, entity_id, ts, payload (jsonb)
-- [ ] **`alerts`**: id, type (info|warning|error|ok), title, body, entity, entity_id, target_role, read_at, created_at
+- [x] **DONE** — `vendo_entries`. RLS via `can_access('vendos', …)`. UI lives in Vendos page → Movements tab.
+- [x] **DONE** — `activity_log` (`bigserial` id; user_id from `auth.uid()`; payload jsonb before/after). `public.log_activity()` trigger attached to 22 tables. Admin-only SELECT.
+- [x] **DONE — schema only** — `alerts` (target_role null = everyone; otherwise role-gated). No producer rules yet — modules will add triggers as needed.
 
 ### Computed views (materialized or regular)
-- [ ] **`v_customer_ar`** — sum unpaid invoices per customer, expose ar_balance
-- [ ] **`v_customer_ytd`** — sum YTD sales per customer
-- [ ] **`v_inventory_value_by_stream`** — Local vs Import total inventory value
-- [ ] **`v_revenue_daily_by_stream`** — daily revenue Local vs Import, used by Dashboard trend chart
+- [x] **DONE — `v_customer_ar`** — per customer: ar_balance, overdue_count, overdue_amount. Regular view, `security_invoker = true`.
+- [x] **DONE — `v_customer_ytd`** — per customer: ytd_sales, ytd_order_count. Filtered to current calendar year; excludes cancelled / credit_hold.
+- [x] **DONE — `v_inventory_value_by_stream`** — per stream: sku_count, on_hand_mt, reserved_mt, available_mt, total_value.
+- [x] **DONE — `v_revenue_daily_by_stream`** — per (date, stream): order_count + revenue. Ready for Dashboard trend chart.
 
 ### RLS policies (write tests as you go)
 - [x] **DONE (partial)** — RLS enabled on `public.users` (read/update own row only, column-level grant restricts updates to `full_name`), `public.roles` (read-all for authenticated), `public.user_roles` (read own assignments only), `public.pages` (read-all for authenticated), `public.access_grants` (read own only). No client-side write policies — admin operations go through Edge Functions with `service_role`.
@@ -161,10 +164,10 @@ Write each table as a versioned `.sql` migration. Below is a starting schema —
 - [x] **DONE** — No anonymous access. Edge Function `create-user` verifies JWT and checks against hardcoded `ADMIN_EMAILS` allowlist before any DB write. *(That allowlist will be replaced by `has_role(uid, 'admin')` once `manage-access` Edge Function is built.)*
 
 ### Triggers / functions
-- [ ] On canvass `awarded` → create `purchase_orders` row(s) (one per winning supplier), set `purchase_requests.status = 'converted_to_po'`
-- [ ] On PO status → `received` → create `goods_receipts` placeholder
-- [ ] On `sales_invoices` due_date < today and status != paid → set `overdue`
-- [ ] Auto-generate document numbers per series (PR-YYYY-NNNN, CNV-YYYY-NNNN, PO-YYYY-NNNN, etc.) via a `next_doc_no(series text)` function backed by a `doc_counters` table
+- [ ] On canvass `awarded` → create `purchase_orders` row(s) (one per winning supplier), set `purchase_requests.status = 'converted_to_po'` — *deferred with canvass winner UI*
+- [x] **DONE (app-side)** — Posting a GRN flips its PO to `received`. (DB-side trigger would be cleaner; app-side covers it for now.)
+- [ ] On `sales_invoices` due_date < today and status != paid → set `overdue` — *with AR turn*
+- [x] **DONE** — `next_doc_no(series text) → text`. Backed by `doc_counters(series, year, last_no)`. Returns `'<SERIES>-YYYY-NNNN'`, atomic increment, auto year-reset.
 
 ---
 
@@ -187,33 +190,38 @@ Each module = one Angular feature module / route group. Build in this order so e
 
 ### Phase C — Procurement flow (Week 2-3)
 Build in order; the auto-creates are the hard part.
-- [ ] **Purchase Requests**
-  - [ ] List with KPIs (Drafts+ForCanvass, Canvassing, Converted, Aged > 7d)
-  - [ ] Create/edit modal with dynamic line items, live total
-  - [ ] Role-gated actions: Submit (Requester), Issue Canvass (Procurement), View Canvass, View PO
-- [ ] **Canvass**
-  - [ ] List with KPIs (Open, Awaiting Approval, Awarded, Avg Suppliers)
-  - [ ] Create modal: pick PR (only `for_canvass` ones), pick 2–3 suppliers, enter quotes per item per supplier, pick winner per line
-  - [ ] Submit-for-approval gating (winners required)
-  - [ ] AOQ view modal with print CSS
-  - [ ] Award action (Approver) → calls Supabase function that creates PO(s) + updates PR
-- [ ] **Purchase Orders**
-  - [ ] Split panel: Local Procurement card + Import Procurement card
-  - [ ] Each card = filtered table with subtotal row
-  - [ ] Status workflow buttons (Approve, Mark Received)
-  - [ ] EWT compliance alert (live count of non-BIR active POs)
-- [ ] **Goods Receipt**
-  - [ ] Mark Received modal: received qty per line + variance + QC + warehouse
-  - [ ] Posting creates inventory_transactions
+- [x] **DONE — Purchase Requests**
+  - [x] List with KPIs (Drafts+ForCanvass, Canvassing, Converted, Aged > 7d)
+  - [x] Create modal with dynamic line items, live total
+  - [x] Save Draft vs Submit-for-canvass status split
+  - [ ] Issue Canvass action that creates a Canvass linked to this PR — *deferred with canvass UI*
+- [x] **DONE (partial) — Canvass**
+  - [x] List with KPIs (Open, Awaiting Approval, Awarded, Closed)
+  - [x] Create modal: pick PR (only `for_canvass` ones), set currency + VAT treatment
+  - [ ] Quote entry per (item, supplier) + winner picking per line — *next pass*
+  - [ ] Submit-for-approval gating (winners required) — *next pass*
+  - [ ] AOQ view modal with print CSS — *Phase I polish*
+  - [ ] Award action → server-side function that creates PO(s) + updates PR — *next pass*
+- [x] **DONE — Purchase Orders**
+  - [x] Single unified register (split-panel Local/Import was the mockup; user can filter by stream later — current table shows stream as a pill column)
+  - [x] Status workflow (Approve button on pending_approval rows)
+  - [x] EWT compliance alert (live count of non-BIR active POs + sum to remit)
+  - [x] Supplier picker auto-sets stream + BIR + EWT rate
+- [x] **DONE — Goods Receipt**
+  - [x] Create from PO modal: received qty per line + variance + QC + warehouse
+  - [x] Posting flips PO to `received`
+  - [ ] Posting creates inventory_transactions — *needs inventory module first*
 
 ### Phase D — Sales flow (Week 3-4)
-- [ ] **Sales Orders**
-  - [ ] Split panel: 🌾 Local Trading Register + 🚢 Import Trading Register
-  - [ ] KPIs: Local Trading MTD, Import Trading MTD, Open Orders, Service Revenue (toll milling + weighbridge MTD — pulled from `toll_milling` + `weighbridge_tickets`)
-  - [ ] Create SO modal
-- [ ] **Delivery**
-  - [ ] DO list
-  - [ ] Delivery Tracker UI (the stepper from the mockup)
+- [x] **DONE — Sales Orders**
+  - [x] Unified register with stream filter pills (All / 🌾 Local / 🚢 Import)
+  - [x] KPIs: Revenue MTD, Local MTD, Import MTD, Credit Hold count
+  - [ ] Service Revenue KPI (needs toll_milling + weighbridge_tickets) — *operations phase*
+  - [x] Create SO modal with lines + credit-hold check (blocks Confirm but allows Save Draft)
+- [x] **DONE (partial) — Delivery**
+  - [x] DO list with KPIs
+  - [x] Tracker UI (simplified stepper, 3 stages)
+  - [ ] Tracking-step jsonb timeline rendering (mockup has 6-step detailed tracker) — *Phase I polish*
 - [ ] **Accounts Receivable**
   - [ ] Split panel: Local AR + Import AR
   - [ ] Aging breakdown chart (≤30d / 31-60 / 61-90 / >90)
@@ -227,13 +235,14 @@ Build in order; the auto-creates are the hard part.
   - [ ] Close Day action (locks all entries for the date)
 
 ### Phase E — Inventory & operations (Week 4-5)
-- [ ] **Inventory**
-  - [ ] Split Stock Ledger: 🌾 Local Stock + 🚢 Import Stock
-  - [ ] Warehouse utilization bars
-  - [ ] Stock Transfer + Stock Adjustment modals
-- [ ] **Weighbridge** — already has its own logic in mockup, port it
-- [ ] **Milling** — Internal Batches + Toll Milling tabs
-- [ ] **Quality Inspection** — port from mockup
+- [x] **DONE — Inventory**
+  - [x] Split Stock Ledger: 🌾 Local Stock + 🚢 Import Stock with subtotal rows
+  - [x] Warehouse utilization bars (with capacity comparison)
+  - [x] Stock Adjustment modal (writes inventory_transactions)
+  - [ ] Stock Transfer modal (between warehouses) — *deferred; trivial to add*
+- [x] **DONE — Weighbridge** — single + two-way modes, live net preview, payment tracking
+- [x] **DONE — Milling** — Internal Batches + Toll Milling tabs (matching mockup tab pattern)
+- [x] **DONE — Quality Inspection** — links to GRN, full metric panel, red-flag highlighting for moisture > 14% and impurity > 1%
 
 ### Phase F — Accounting & compliance (Week 5-6)
 - [ ] **Accounts Payable** — port from mockup
@@ -242,11 +251,11 @@ Build in order; the auto-creates are the hard part.
 - [ ] **Treasury** — cash position dashboard
 
 ### Phase G — Side & supporting modules (Week 6+)
-- [ ] **Passive Income / Vendos**
-  - [ ] Vendos table (add/edit/delete machines)
-  - [ ] Cash Movements (income + expense entries)
-  - [ ] KPIs: Active Vendos, Income MTD, Expenses MTD, Net MTD
-  - [ ] Filter by vendo
+- [x] **DONE — Passive Income / Vendos**
+  - [x] Vendos table (add machines) — list page with KPIs
+  - [x] Cash Movements (income + expense entries) — tabbed sub-page with add-entry modal
+  - [x] KPIs: Active Vendos, Income MTD, Expenses MTD, Net MTD
+  - [x] Filter by vendo (in Movements tab)
 - [ ] **Importation** — shipment tracker
 - [ ] **HR** — employee directory
 - [ ] **Payroll** — port from mockup
@@ -275,7 +284,7 @@ Build in order; the auto-creates are the hard part.
 - [ ] Error toasts
 - [ ] Confirm dialogs for destructive actions
 - [ ] Keyboard shortcuts (`g d` = dashboard, `g p` = PR, etc.)
-- [ ] Activity log + audit trail
+- [x] **DONE (capture)** — Activity log + audit trail trigger live on 22 tables; admin viewer page UI is a small follow-up.
 
 ---
 

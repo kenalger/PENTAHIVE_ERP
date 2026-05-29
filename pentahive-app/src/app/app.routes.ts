@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './auth.guard';
 import { changePasswordGuard } from './change-password.guard';
 import { pageAccessGuard } from './page-access.guard';
+import { workspaceGuard } from './workspace.guard';
 
 const loadPlaceholder = () => import('./placeholder/placeholder').then(m => m.Placeholder);
 
@@ -13,6 +14,7 @@ const ph = (pageCode: string, title: string, icon: string) => ({
 });
 
 export const routes: Routes = [
+  // ── Auth (outside any workspace) ──
   {
     path: 'login',
     loadComponent: () => import('./login/login').then(m => m.Login),
@@ -23,10 +25,36 @@ export const routes: Routes = [
     canActivate: [changePasswordGuard],
   },
 
+  // ── Workspace picker (post-auth landing) ──
   {
     path: '',
-    loadComponent: () => import('./shell/shell').then(m => m.Shell),
+    pathMatch: 'full',
+    loadComponent: () => import('./workspace-picker/workspace-picker').then(m => m.WorkspacePicker),
     canActivate: [authGuard],
+  },
+
+  // ── Settings — cross-workspace (signed-in users) ──
+  {
+    path: 'settings',
+    loadComponent: () => import('./settings/settings').then(m => m.Settings),
+    canActivate: [authGuard],
+    data: { pageCode: 'settings', title: 'Settings', icon: '⚙️' },
+  },
+
+  // ── Hardware workspace (placeholder) ──
+  {
+    path: 'hardware',
+    loadComponent: () => import('./hardware/hardware').then(m => m.Hardware),
+    canActivate: [authGuard, workspaceGuard],
+    data: { workspace: 'hardware' },
+  },
+
+  // ── Milling workspace — the rice/grain ERP we built ──
+  {
+    path: 'milling',
+    loadComponent: () => import('./shell/shell').then(m => m.Shell),
+    canActivate: [authGuard, workspaceGuard],
+    data: { workspace: 'milling' },
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 
@@ -36,11 +64,40 @@ export const routes: Routes = [
         loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard),
       },
 
+      // Admin Console — rendered inside the workspace shell so the sidebar
+      // and topbar stay put. Admin-only via pageAccessGuard.
+      {
+        path: 'admin',
+        loadComponent: () => import('./admin/admin').then(m => m.Admin),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'admin-users', title: 'Admin', icon: '🛡️' },
+      },
+
       // Operations
-      ph('weighbridge',        'Weighbridge',        '⚖️'),
-      ph('milling',            'Milling',            '⚙️'),
-      ph('inventory',          'Inventory',          '🏪'),
-      ph('quality-inspection', 'Quality Inspection', '🔬'),
+      {
+        path: 'weighbridge',
+        loadComponent: () => import('./weighbridge/weighbridge').then(m => m.Weighbridge),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'weighbridge' },
+      },
+      {
+        path: 'milling',
+        loadComponent: () => import('./milling/milling').then(m => m.Milling),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'milling' },
+      },
+      {
+        path: 'inventory',
+        loadComponent: () => import('./inventory/inventory').then(m => m.Inventory),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'inventory' },
+      },
+      {
+        path: 'quality-inspection',
+        loadComponent: () => import('./quality-inspection/quality-inspection').then(m => m.QualityInspection),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'quality-inspection' },
+      },
 
       // Sales
       {
@@ -49,8 +106,18 @@ export const routes: Routes = [
         canActivate: [pageAccessGuard],
         data: { pageCode: 'customers' },
       },
-      ph('sales-orders',        'Sales Orders',       '🧾'),
-      ph('deliveries',          'Delivery',           '🚛'),
+      {
+        path: 'sales-orders',
+        loadComponent: () => import('./sales-orders/sales-orders').then(m => m.SalesOrders),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'sales-orders' },
+      },
+      {
+        path: 'deliveries',
+        loadComponent: () => import('./deliveries/deliveries').then(m => m.Deliveries),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'deliveries' },
+      },
       ph('accounts-receivable', 'Accounts Receivable','💰'),
       ph('dcpr',                'DCPR',               '📒'),
 
@@ -61,10 +128,30 @@ export const routes: Routes = [
         canActivate: [pageAccessGuard],
         data: { pageCode: 'suppliers' },
       },
-      ph('purchase-requests', 'Purchase Requests', '📝'),
-      ph('canvasses',         'Canvasses',         '📋'),
-      ph('purchase-orders',   'Purchase Orders',   '📦'),
-      ph('goods-receipts',    'Goods Receipt',     '📥'),
+      {
+        path: 'purchase-requests',
+        loadComponent: () => import('./purchase-requests/purchase-requests').then(m => m.PurchaseRequests),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'purchase-requests' },
+      },
+      {
+        path: 'canvasses',
+        loadComponent: () => import('./canvasses/canvasses').then(m => m.Canvasses),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'canvasses' },
+      },
+      {
+        path: 'purchase-orders',
+        loadComponent: () => import('./purchase-orders/purchase-orders').then(m => m.PurchaseOrders),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'purchase-orders' },
+      },
+      {
+        path: 'goods-receipts',
+        loadComponent: () => import('./goods-receipts/goods-receipts').then(m => m.GoodsReceipts),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'goods-receipts' },
+      },
       {
         path: 'items',
         loadComponent: () => import('./items/items').then(m => m.Items),
@@ -99,22 +186,9 @@ export const routes: Routes = [
         canActivate: [pageAccessGuard],
         data: { pageCode: 'vendos' },
       },
-
-      // Admin
-      {
-        path: 'admin/users',
-        loadComponent: () => import('./admin/users/users').then(m => m.Users),
-        canActivate: [pageAccessGuard],
-        data: { pageCode: 'admin-users' },
-      },
-      {
-        path: 'admin/access',
-        loadComponent: loadPlaceholder,
-        canActivate: [pageAccessGuard],
-        data: { pageCode: 'admin-access', title: 'Admin — Access', icon: '🔑' },
-      },
     ],
   },
 
+  // ── Catch-all → workspace picker ──
   { path: '**', redirectTo: '' },
 ];
