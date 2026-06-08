@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } fro
 import { AuthService } from '../auth.service';
 import { ThemeService } from '../theme.service';
 import { supabase } from '../supabase.client';
+import { Icon } from '../ui/icon';
 
 interface NavItem {
   /** path *segment* relative to the workspace, e.g. 'dashboard' or 'sales-orders' */
@@ -37,83 +38,81 @@ const MILLING_NAV: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { path: 'dashboard', label: 'Dashboard', icon: '📊', pageCode: 'dashboard' },
+      { path: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', pageCode: 'dashboard' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { path: 'weighbridge',        label: 'Weighbridge',        icon: '⚖️', pageCode: 'weighbridge', badge: { text: 'LIVE', kind: 'green' } },
-      { path: 'milling',            label: 'Milling',            icon: '⚙️', pageCode: 'milling' },
-      { path: 'inventory',          label: 'Inventory',          icon: '🏪', pageCode: 'inventory' },
-      { path: 'quality-inspection', label: 'Quality Inspection', icon: '🔬', pageCode: 'quality-inspection' },
+      { path: 'weighbridge',        label: 'Weighbridge',        icon: 'scale',      pageCode: 'weighbridge', badge: { text: 'LIVE', kind: 'green' } },
+      { path: 'milling',            label: 'Milling',            icon: 'settings',   pageCode: 'milling' },
+      { path: 'inventory',          label: 'Inventory',          icon: 'boxes',      pageCode: 'inventory' },
+      { path: 'quality-inspection', label: 'Quality Inspection', icon: 'microscope', pageCode: 'quality-inspection' },
     ],
   },
   {
     label: 'Sales',
     items: [
-      { path: 'customers',           label: 'Customers',          icon: '👥', pageCode: 'customers' },
-      { path: 'sales-orders',        label: 'Sales Orders',       icon: '🧾', pageCode: 'sales-orders' },
-      { path: 'deliveries',          label: 'Delivery',           icon: '🚛', pageCode: 'deliveries' },
+      { path: 'customers',           label: 'Customers',          icon: 'users',        pageCode: 'customers' },
+      { path: 'sales-orders',        label: 'Sales Orders',       icon: 'receipt-text', pageCode: 'sales-orders' },
+      { path: 'deliveries',          label: 'Delivery',           icon: 'truck',        pageCode: 'deliveries' },
     ],
   },
   {
     label: 'Procurement',
     items: [
-      { path: 'suppliers',         label: 'Suppliers',         icon: '🏭', pageCode: 'suppliers' },
-      { path: 'purchase-requests', label: 'Purchase Requests', icon: '📝', pageCode: 'purchase-requests' },
-      { path: 'canvasses',         label: 'Canvasses',         icon: '📋', pageCode: 'canvasses' },
-      { path: 'purchase-orders',   label: 'Purchase Orders',   icon: '📦', pageCode: 'purchase-orders' },
-      { path: 'goods-receipts',    label: 'Goods Receipt',     icon: '📥', pageCode: 'goods-receipts' },
-      { path: 'items',             label: 'Items',             icon: '🪙', pageCode: 'items' },
-      { path: 'warehouses',        label: 'Warehouses',        icon: '🏚️', pageCode: 'warehouses' },
+      { path: 'suppliers',         label: 'Suppliers',         icon: 'factory',         pageCode: 'suppliers' },
+      { path: 'purchase-requests', label: 'Purchase Requests', icon: 'clipboard-list',  pageCode: 'purchase-requests' },
+      { path: 'canvasses',         label: 'Canvasses',         icon: 'clipboard-check', pageCode: 'canvasses' },
+      { path: 'purchase-orders',   label: 'Purchase Orders',   icon: 'package',         pageCode: 'purchase-orders' },
+      { path: 'goods-receipts',    label: 'Goods Receipt',     icon: 'inbox',           pageCode: 'goods-receipts' },
+      { path: 'items',             label: 'Items',             icon: 'tag',             pageCode: 'items' },
+      { path: 'warehouses',        label: 'Warehouses',        icon: 'warehouse',       pageCode: 'warehouses' },
     ],
   },
   {
     label: 'Importation',
     items: [
-      { path: 'importation', label: 'Shipments', icon: '🚢', pageCode: 'importation' },
+      { path: 'importation', label: 'Shipments', icon: 'ship', pageCode: 'importation' },
     ],
   },
   {
     label: 'Accounting',
     items: [
-      { path: 'general-ledger',      label: 'General Ledger',     icon: '📊', pageCode: 'general-ledger' },
-      { path: 'accounts-payable',    label: 'Accounts Payable',   icon: '💳', pageCode: 'accounts-payable' },
-      { path: 'accounts-receivable', label: 'Accounts Receivable',icon: '💰', pageCode: 'accounts-receivable' },
-      { path: 'dcpr',                label: 'DCPR',               icon: '📒', pageCode: 'dcpr', badge: { text: 'DAILY', kind: 'green' } },
-      { path: 'bir-compliance',      label: 'BIR Compliance',     icon: '🏛️', pageCode: 'bir-compliance' },
+      { path: 'general-ledger',      label: 'General Ledger',     icon: 'book-open',    pageCode: 'general-ledger' },
+      { path: 'accounts-payable',    label: 'Accounts Payable',   icon: 'credit-card',  pageCode: 'accounts-payable' },
+      { path: 'accounts-receivable', label: 'Accounts Receivable',icon: 'wallet',       pageCode: 'accounts-receivable' },
+      { path: 'dcpr',                label: 'DCPR',               icon: 'notebook-pen', pageCode: 'dcpr', badge: { text: 'DAILY', kind: 'green' } },
+      { path: 'bir-compliance',      label: 'BIR Compliance',     icon: 'landmark',     pageCode: 'bir-compliance' },
     ],
   },
   {
     label: 'Treasury',
     items: [
-      { path: 'treasury', label: 'Cash Position', icon: '🏦', pageCode: 'treasury' },
+      { path: 'treasury', label: 'Cash Position', icon: 'banknote', pageCode: 'treasury' },
     ],
   },
   {
     label: 'HR & Reports',
     items: [
-      { path: 'hr',      label: 'Employees', icon: '👤', pageCode: 'hr' },
-      { path: 'payroll', label: 'Payroll',   icon: '💼', pageCode: 'payroll' },
-      { path: 'reports', label: 'Reports',   icon: '📈', pageCode: 'reports' },
-      { path: 'vendos',  label: 'Vendos',    icon: '🥤', pageCode: 'vendos' },
+      { path: 'hr',      label: 'Employees', icon: 'user',       pageCode: 'hr' },
+      { path: 'payroll', label: 'Payroll',   icon: 'briefcase',  pageCode: 'payroll' },
+      { path: 'reports', label: 'Reports',   icon: 'line-chart', pageCode: 'reports' },
+      { path: 'vendos',  label: 'Vendos',    icon: 'cup-soda',   pageCode: 'vendos' },
     ],
   },
 ];
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon],
   template: `
     <aside id="sb">
       <div class="sb-logo">
-        <div class="sb-mark">
-          <span class="ws-glyph">{{ workspaceMeta()?.icon || '⬣' }}</span>
-        </div>
+        <div class="sb-mark">JKL</div>
         <div>
-          <div class="sb-name">{{ workspaceMeta()?.name || 'PentaHive' }}</div>
-          <div class="sb-ver">{{ workspace() }} workspace</div>
+          <div class="sb-name">JKL ERP</div>
+          <div class="sb-ver">{{ workspaceMeta()?.name || workspace() }} workspace</div>
         </div>
       </div>
 
@@ -122,7 +121,7 @@ const MILLING_NAV: NavGroup[] = [
           <div class="ns">{{ group.label }}</div>
           @for (item of group.items; track item.path) {
             <a class="ni" [routerLink]="['/', workspace(), item.path]" routerLinkActive="on">
-              <span class="ico">{{ item.icon }}</span>
+              <app-icon class="ico" [name]="item.icon" [size]="17" />
               <span class="nlbl">{{ item.label }}</span>
               @if (item.badge) {
                 <span [class]="item.badge.kind === 'red' ? 'nb' : 'ng'">{{ item.badge.text }}</span>
@@ -134,7 +133,7 @@ const MILLING_NAV: NavGroup[] = [
 
       <div class="sb-foot">
         <a class="switch-link" routerLink="/" title="Switch workspace">
-          <span class="ico">⇆</span> Switch workspace
+          <app-icon name="arrow-left-right" [size]="15" /> Switch workspace
         </a>
       </div>
     </aside>
@@ -147,7 +146,7 @@ const MILLING_NAV: NavGroup[] = [
         </div>
         <div class="tb-acts">
           <button class="notif-btn" (click)="theme.toggle()" [title]="theme.theme() === 'dark' ? 'Switch to light' : 'Switch to dark'">
-            {{ theme.theme() === 'dark' ? '☀' : '🌙' }}
+            <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="17" />
           </button>
           <div class="user-menu">
             <button class="notif-btn user-btn" (click)="toggleUserMenu($event)" [class.open]="userMenuOpen()" title="Account">
@@ -160,19 +159,19 @@ const MILLING_NAV: NavGroup[] = [
                   <div class="dd-role">{{ roleLabel() }}</div>
                 </div>
                 <button class="dd-item" (click)="go('/settings')" role="menuitem">
-                  <span class="dd-ico">⚙️</span><span>Settings</span>
+                  <app-icon class="dd-ico" name="settings" [size]="15" /><span>Settings</span>
                 </button>
                 @if (auth.isAdmin()) {
                   <button class="dd-item" (click)="goAdmin()" role="menuitem">
-                    <span class="dd-ico">🛡️</span><span>Admin Console</span>
+                    <app-icon class="dd-ico" name="shield" [size]="15" /><span>Admin Console</span>
                   </button>
                 }
                 <button class="dd-item" (click)="go('/')" role="menuitem">
-                  <span class="dd-ico">⇆</span><span>Switch workspace</span>
+                  <app-icon class="dd-ico" name="arrow-left-right" [size]="15" /><span>Switch workspace</span>
                 </button>
                 <div class="dd-sep"></div>
                 <button class="dd-item danger" (click)="signOut()" role="menuitem">
-                  <span class="dd-ico">⎋</span><span>Logout</span>
+                  <app-icon class="dd-ico" name="log-out" [size]="15" /><span>Logout</span>
                 </button>
               </div>
             }
@@ -211,13 +210,14 @@ const MILLING_NAV: NavGroup[] = [
     }
     .sb-mark {
       width: 36px; height: 36px;
-      border-radius: 50%;
+      border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 16px rgba(242,168,65,.3);
+      box-shadow: var(--shadow);
       flex-shrink: 0;
       background: linear-gradient(135deg, var(--gold), var(--gold-d));
       color: var(--gold-text);
-      font-size: 18px;
+      font-family: var(--mono);
+      font-size: 11px; font-weight: 700; letter-spacing: .5px;
     }
     .sb-name { font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: -.4px; }
     .sb-ver { font-size: 10px; color: var(--dim); letter-spacing: .8px; text-transform: uppercase; margin-top: 1px; }
@@ -240,7 +240,8 @@ const MILLING_NAV: NavGroup[] = [
       border-left-color: var(--gold);
       font-weight: 600;
     }
-    .ni .ico { font-size: 15px; width: 20px; text-align: center; opacity: .8; }
+    .ni .ico { display: inline-flex; align-items: center; justify-content: center; width: 20px; flex-shrink: 0; opacity: .65; }
+    .ni:hover .ico { opacity: .9; }
     .ni.on .ico { opacity: 1; }
     .ni .nlbl { flex: 1; }
     .ni .nb { background: var(--rose); color: #fff; font-size: 9.5px; font-weight: 700; padding: 1.5px 6px; border-radius: 10px; font-family: var(--mono); }
@@ -323,7 +324,7 @@ const MILLING_NAV: NavGroup[] = [
     .dd-item:hover { background: var(--row-hover); color: var(--text); }
     .dd-item.danger { color: var(--rose); }
     .dd-item.danger:hover { background: var(--rose-bg); }
-    .dd-ico { font-size: 14px; width: 18px; text-align: center; }
+    .dd-ico { display: inline-flex; align-items: center; justify-content: center; width: 18px; flex-shrink: 0; opacity: .8; }
 
     /* ── Content ── */
     #main {
@@ -374,7 +375,7 @@ export class Shell {
     return null;
   });
 
-  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'PentaHive');
+  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'JKL ERP');
   activeGroup = computed(() => {
     const item = this.activeNavItem();
     if (!item) return 'Overview';

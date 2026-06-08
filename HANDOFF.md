@@ -1,6 +1,6 @@
 # PENTAHIVE_ERP — Build Hand-off
 
-Date: 2026-05-27 (last updated)
+Date: 2026-06-03 (last updated)
 Source skills: `Skill/auth.md` (`ErpPentaHive`), `Skill/RJL-ERP-BUILD-TODO.md` (overall roadmap)
 Generated under: `pentahive-app/`
 
@@ -148,7 +148,7 @@ Sidebar Admin group → three links to the same tabbed page.
 - [ ] Sign out → sign in as a non-admin user (create one first with the Create User form, then assign them only `user` role) → Admin group **hidden** from sidebar
 - [ ] As that non-admin, try navigating directly to `/admin/users` → redirected back to `/dashboard` by `pageAccessGuard`
 - [ ] Sign back in as admin → /admin/users → 3 KPIs at top, Create User form, full users table
-- [ ] **Users tab:** create a new user (if Edge Function deployed) → temp password shown once; table refreshes with new row showing "no role" + 0 bundles
+- [ ] **Users tab:** click **＋ Create User** in the User list card header → modal opens with email field → enter `test@example.com` → click **Create user** → success panel inside the modal shows the email + 14-char temp password (copy it once); click **Done** to dismiss → table refreshes with new row showing "no role" + 0 bundles
 - [ ] **Roles tab:** click × on a non-admin user's role chip → it disappears; click dropdown + Assign → role added back. KPI cards on Users tab update.
 - [ ] Roles tab → try to × your own admin role → blocked with a warning banner (last-admin protection)
 - [ ] **Access tab:** Catalog shows `all_access` bundle; click Show permissions → 28-row matrix expands; Hide collapses it
@@ -640,22 +640,28 @@ from (values ('purchase-requests'), ('canvasses'), ('purchase-orders'), ('goods-
 on conflict (access_id, page_id) do nothing;
 ```
 
-### Seeded bundle — `all_access`
+### Seeded bundles
 
-Migration `20260526000003_grant_all_access_to_admin.sql` adds one bundle to the catalog: **`all_access`** — full permissions (view/create/edit/delete/approve) on all 28 pages. It's assigned to `admin@gmail.com`.
+The catalog now ships with **8 bundles** covering admin + the main ERP job functions. Admins assigning a new employee can pick the closest match instead of being forced to grant full access.
 
-> Note: admin already had implicit full access via the `admin` role bypass in `can_access()`. This explicit assignment is redundant for **enforcement** but makes the grants visible on the dashboard and gives the catalog a real example bundle to learn from.
+| # | Code | Pages | Notes |
+|---|---|---:|---|
+| 1 | `all_access`          | 29 | Full permissions on every page. Assigned to `admin@gmail.com` (redundant — admin already bypasses, but makes grants visible). |
+| 2 | `procurement_officer` |  9 | View/create/edit PRs, canvasses, POs, GRNs, suppliers, items. View-only: dashboard, warehouses, inventory. |
+| 3 | `sales_officer`       |  8 | View/create/edit customers, SOs, deliveries. View-only: dashboard, items, inventory, AR, DCPR. |
+| 4 | `warehouse_keeper`    |  7 | View/create/edit inventory, warehouses, weighbridge. View-only: dashboard, items, GRNs, deliveries. |
+| 5 | `mill_operator`       |  6 | View/create/edit milling, quality-inspection, weighbridge. View-only: dashboard, items, inventory. |
+| 6 | `accountant`          | 12 | View/create/edit AR, AP, GL, BIR, treasury, DCPR. View-only across source docs (SOs/POs/GRNs/deliveries) + reports. |
+| 7 | `hr_officer`          |  3 | View/create/edit HR, payroll. View-only: dashboard. |
+| 8 | `read_only_viewer`    | 24 | View on every milling-workspace page except HR and payroll. For executives/auditors. |
 
-Verified in DB:
+**No bundle grants `approve`** — that action is owned by the `manager` role (which has implicit approve everywhere via the `can_access()` short-circuit). To make someone an approver, give them the `manager` role + the relevant operational bundle.
 
-```
-bundle:                all_access — All Access
-permissions rows:      28  (one per page × all 5 actions true)
-admin assignments:     1
-effective view rows:   28 pages reachable, view=28, approve=28
-```
+Migrations:
+- `20260526000003_grant_all_access_to_admin.sql` — original `all_access` bundle + assignment to admin.
+- `20260603000002_seed_role_access_bundles.sql` — added the 7 role bundles above. Idempotent via `on conflict do nothing` — safe to re-run.
 
-The catalog is otherwise still a clean slate — add more bundles via new migrations as the modules come online.
+> **Authoring more bundles:** follow the pattern in `20260603000002_…` — `insert into access_definitions (code, name, description)` then `insert into access_definition_permissions (access_id, page_id, can_view, …)` for each page. The admin UI's catalog + dropdown pick them up automatically on next page load; no Angular change needed.
 
 ### Seeded pages (28 total)
 
@@ -784,6 +790,18 @@ const { data, error } = await supabase.rpc('admin_create_user', { p_email: email
 ```
 
 Replaced the previous `supabase.functions.invoke('create-user', …)` call. Error handling strips the Postgres `forbidden:` / `invalid email address:` prefix so the alert reads cleanly.
+
+**UI follow-up (2026-06-03):** the inline "Create user" form card was replaced by a **＋ Create User** button in the User list card header. Clicking it opens an `app-modal` (the shared `src/app/ui/modal.ts`) with the email field, error region, and post-submit success panel (email + temp password) all inside the modal. The submit button hides after a successful create; the secondary button label flips from **Cancel** → **Done**. State (`newUserEmail`, `createError`, `createdUser`) is reset every time the modal opens via `openCreateUser()`. This matches the `＋ Add / ＋ New` button → modal pattern used by every other module (suppliers, customers, items, etc.) and removes the always-visible form from the page. No backend change — the RPC call is unchanged.
+
+**RPC fix (2026-06-03):** during testing, the modal surfaced `column reference "email" is ambiguous` from the `admin_create_user` RPC. Cause: the function's `RETURNS TABLE(user_id uuid, email text, temp_password text)` declares an OUT column named `email`, which Postgres treats as a visible variable inside the function body — and the duplicate-check query `select 1 from auth.users where lower(email) = v_clean` had a bare `email` reference that matched both the OUT column and `auth.users.email`. Fixed in migration `20260603000001_fix_admin_create_user_ambiguous_email.sql` (applied) by aliasing the table (`from auth.users u`) and qualifying the column (`lower(u.email)`). The fix is a `create or replace function` — no schema change, no data migration. If you ever extend this RPC, qualify every bare column that overlaps an OUT-table name.
+
+**Embed disambiguation fix (2026-06-03):** after the RPC was fixed and the first non-admin user was created, the Admin Console showed "No users found" with `0 Users / 0 Admins` even though `public.users` had two rows and RLS allowed the admin to see both. Root cause: `public.user_access` has **two foreign keys back to `public.users`** — `user_id_fkey` AND `assigned_by_fkey`. PostgREST can't pick one for the embed and returns `PGRST201` (ambiguous relationship). The `Admin.load()` code was using `(u.data ?? []) as any[]`, which silently coerced the error response to an empty array — hence "0 users" with no visible error.
+
+Two changes in `src/app/admin/admin.ts`:
+1. **Disambiguated the embed** with the column-hint syntax: `user_access!user_id(...)` (also applied to `user_roles!user_id(...)` for consistency and future-proofing). This tells PostgREST to use the `user_id` column for the join, ignoring `assigned_by`.
+2. **Added a `loadError` signal** and a red `ph-alert-error` banner at the top of the Admin Console so future PostgREST errors aren't silently swallowed. Errors from any of the three parallel queries (`users`, `roles`, `access_definitions`) are surfaced + logged to console.
+
+If you ever add a third FK from another table back to `public.users`, the same disambiguation trick applies — `!fk_column_name` after the embed table.
 
 ### What this changes for deployment
 
@@ -921,7 +939,7 @@ Sidebar Admin group now has three links (Users / Roles / Access), still only vis
 ### Tab: Users
 
 - 3-KPI row: Total Users / Admins / With Bundles
-- **Create User** form at top — calls the existing `create-user` Edge Function. Displays generated temp password in a one-time alert. (Requires the Edge Function to be deployed; if not, the form returns an error with the deploy hint.)
+- **＋ Create User** button in the User list card header — opens a centered modal (`app-modal`) containing the email field. On submit, calls the `admin_create_user(p_email)` Postgres RPC and displays the generated temp password in a one-time success panel **inside the modal** so the admin can copy it before dismissing. Submit button hides after success; Cancel changes to **Done**. Modal state resets on every open. (Edge Function no longer required — see "Create-user button" section below.)
 - **All Users** table — every user with email, full_name, roles (colored pills), and assigned bundles (chips). Read-only view; mutations happen in Roles / Access tabs.
 
 ### Tab: Roles

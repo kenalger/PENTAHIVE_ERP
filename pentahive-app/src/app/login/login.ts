@@ -2,17 +2,18 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { Icon } from '../ui/icon';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, Icon],
   template: `
     <div class="auth-shell">
       <aside class="auth-brand">
         <div class="brand-top">
           <div class="brand-mark">
-            <span class="hex">⬣</span>
-            <span class="brand-name">PentaHive</span>
+            <span class="hex"><app-icon name="hexagon" [size]="20" /></span>
+            <span class="brand-name">JKL ERP</span>
           </div>
           <span class="brand-tag">Enterprise Resource Platform</span>
         </div>
@@ -29,7 +30,7 @@ import { AuthService } from '../auth.service';
         </div>
 
         <div class="brand-foot">
-          <span>© {{ year }} PentaHive Systems</span>
+          <span>© {{ year }} JKL ERP</span>
           <span class="dot-sep">•</span>
           <span>v1.0</span>
         </div>
@@ -126,10 +127,9 @@ import { AuthService } from '../auth.service';
       align-items: center; justify-content: center;
       width: 34px; height: 34px;
       border-radius: 9px;
-      background: linear-gradient(135deg, #4f46e5, #2563eb);
-      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.45);
-      font-size: 1.1rem;
-      color: #fff;
+      background: linear-gradient(135deg, #ffffff, #cbd5e1);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+      color: #0B1118;
     }
     .brand-tag {
       display: block;

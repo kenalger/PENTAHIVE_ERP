@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { ThemeService } from '../theme.service';
 import { supabase } from '../supabase.client';
+import { Icon } from '../ui/icon';
 
 interface Workspace {
   code: string;
@@ -15,14 +16,14 @@ interface Workspace {
 
 @Component({
   selector: 'app-workspace-picker',
-  imports: [RouterLink],
+  imports: [RouterLink, Icon],
   template: `
     <div class="wp-shell">
       <header class="wp-head">
         <div class="brand">
-          <span class="brand-mark">⬣</span>
+          <span class="brand-mark"><app-icon name="hexagon" [size]="22" /></span>
           <div>
-            <div class="brand-name">PentaHive</div>
+            <div class="brand-name">JKL ERP</div>
             <div class="brand-tag">Enterprise Resource Platform</div>
           </div>
         </div>
@@ -103,7 +104,7 @@ interface Workspace {
       color: var(--gold-text);
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 22px; font-weight: 700;
-      box-shadow: 0 6px 18px rgba(242,168,65,.3);
+      box-shadow: var(--shadow);
     }
     .brand-name { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.4px; }
     .brand-tag { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); margin-top: 2px; }

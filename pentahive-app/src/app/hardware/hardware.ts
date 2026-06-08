@@ -13,7 +13,7 @@ import { AuthService } from '../auth.service';
           <span class="brand-mark">🔧</span>
           <div>
             <div class="brand-name">Hardware</div>
-            <div class="brand-tag">PentaHive Workspace · Coming Soon</div>
+            <div class="brand-tag">JKL ERP Workspace · Coming Soon</div>
           </div>
         </div>
         <div class="actions">

@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { supabase } from '../supabase.client';
 import { AuthService } from '../auth.service';
+import { Modal } from '../ui/modal';
 
 type Tab = 'users' | 'roles' | 'access';
 
@@ -30,7 +31,7 @@ interface AccessDef {
 
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule],
+  imports: [FormsModule, Modal],
   template: `
     @if (!auth.isAdmin()) {
       <div class="ph-alert ph-alert-error">
@@ -70,6 +71,12 @@ interface AccessDef {
       </div>
     }
 
+    @if (loadError()) {
+      <div class="ph-alert ph-alert-error" style="margin-bottom:16px">
+        <strong>Failed to load admin data:</strong> {{ loadError() }}
+      </div>
+    }
+
     <!-- ─────── Tabs ─────── -->
     <nav class="tabs" role="tablist">
       <button class="tab" [class.on]="tab() === 'users'" (click)="tab.set('users')" role="tab" [attr.aria-selected]="tab() === 'users'">
@@ -89,32 +96,6 @@ interface AccessDef {
     <!-- ─────── USERS TAB ─────── -->
     @if (tab() === 'users') {
       <div class="panel">
-        <!-- Create user -->
-        <section class="card">
-          <header class="card-h">
-            <div>
-              <div class="card-t">Create user</div>
-              <div class="card-sub">A new account is created with a temporary password.</div>
-            </div>
-          </header>
-          <form (ngSubmit)="createUser()" class="inline-form">
-            <input class="ph-input" type="email" [(ngModel)]="newUserEmail" name="email" placeholder="employee@company.com" required />
-            <button type="submit" class="ph-btn ph-btn-primary" [disabled]="creating()">
-              {{ creating() ? 'Creating…' : 'Create user' }}
-            </button>
-          </form>
-
-          @if (createError()) { <div class="ph-alert ph-alert-error" style="margin-top:14px">{{ createError() }}</div> }
-          @if (createdUser(); as u) {
-            <div class="ph-alert ph-alert-success" style="margin-top:14px">
-              <div><strong>Account created — share these credentials securely:</strong></div>
-              <div style="margin-top:6px"><strong>Email:</strong> {{ u.email }}</div>
-              <div><strong>Temp password:</strong> <code class="temp-code">{{ u.tempPassword }}</code></div>
-              <div class="dim" style="margin-top:6px">Forced password change on first login. This won't be shown again.</div>
-            </div>
-          }
-        </section>
-
         <!-- User list -->
         <section class="card">
           <header class="card-h">
@@ -122,6 +103,9 @@ interface AccessDef {
               <div class="card-t">User list</div>
               <div class="card-sub">Manage roles inline. Bundle assignments live in the Access tab.</div>
             </div>
+            <button type="button" class="ph-btn ph-btn-primary ph-btn-sm" (click)="openCreateUser()">
+              ＋ Create User
+            </button>
           </header>
 
           @if (loading()) { <p class="empty">Loading…</p> }
@@ -184,6 +168,55 @@ interface AccessDef {
             </div>
           }
         </section>
+
+        <!-- Create user modal -->
+        <app-modal [open]="showCreate()" [title]="'Create User'" (closed)="closeCreateUser()">
+          <form (ngSubmit)="createUser()">
+            <p class="modal-lede">
+              A new account is created with a temporary password. The new user will be forced to change it on first login.
+            </p>
+            <div class="ph-field">
+              <label class="ph-label" for="new-user-email">Email *</label>
+              <input
+                id="new-user-email"
+                class="ph-input"
+                type="email"
+                [(ngModel)]="newUserEmail"
+                name="email"
+                placeholder="employee@company.com"
+                autocomplete="off"
+                required
+                [disabled]="creating()"
+              />
+            </div>
+
+            @if (createError()) {
+              <div class="ph-alert ph-alert-error" style="margin-top:14px">{{ createError() }}</div>
+            }
+
+            @if (createdUser(); as u) {
+              <div class="ph-alert ph-alert-success" style="margin-top:14px">
+                <div><strong>Account created — share these credentials securely:</strong></div>
+                <div style="margin-top:6px"><strong>Email:</strong> {{ u.email }}</div>
+                <div><strong>Temp password:</strong> <code class="temp-code">{{ u.tempPassword }}</code></div>
+                <div class="dim" style="margin-top:6px">
+                  Forced password change on first login. This won't be shown again.
+                </div>
+              </div>
+            }
+
+            <div class="form-actions">
+              <button type="button" class="ph-btn ph-btn-ghost" (click)="closeCreateUser()">
+                {{ createdUser() ? 'Done' : 'Cancel' }}
+              </button>
+              @if (!createdUser()) {
+                <button type="submit" class="ph-btn ph-btn-primary" [disabled]="creating() || !newUserEmail.trim()">
+                  {{ creating() ? 'Creating…' : 'Create user' }}
+                </button>
+              }
+            </div>
+          </form>
+        </app-modal>
       </div>
     }
 
@@ -442,11 +475,15 @@ interface AccessDef {
       margin-top: 3px;
     }
 
-    .inline-form {
-      display: flex; gap: 10px; align-items: center;
-      max-width: 540px;
+    .modal-lede {
+      font-size: 12.5px; color: var(--sub);
+      margin: 0 0 14px 0; line-height: 1.5;
     }
-    .inline-form .ph-input { flex: 1; }
+    .form-actions {
+      display: flex; gap: 10px; justify-content: flex-end;
+      margin-top: 18px; padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
     .temp-code {
       font-family: var(--mono);
       background: var(--raised);
@@ -605,11 +642,13 @@ export class Admin {
   loading = signal(true);
   defsLoading = signal(true);
   busy = signal(false);
+  loadError = signal<string | null>(null);
 
   newUserEmail = '';
   creating = signal(false);
   createError = signal<string | null>(null);
   createdUser = signal<{ email: string; tempPassword: string } | null>(null);
+  showCreate = signal(false);
 
   pickedRole: Record<string, string> = {};
   pickedBundle: Record<string, string> = {};
@@ -627,10 +666,15 @@ export class Admin {
   async load() {
     this.loading.set(true);
     this.defsLoading.set(true);
+    this.loadError.set(null);
 
+    // NOTE: `user_access` has two FKs back to `users` (user_id + assigned_by),
+    // so PostgREST embeds must disambiguate with the column hint `!user_id`
+    // — otherwise it returns PGRST201 (ambiguous relationship) and supabase-js
+    // surfaces null data with an error. Same hint on user_roles is harmless.
     const [u, r, defs] = await Promise.all([
       supabase.from('users')
-        .select('id, email, full_name, is_admin, user_roles(roles(id, name)), user_access(access_id, access_definitions(name))')
+        .select('id, email, full_name, is_admin, user_roles!user_id(roles(id, name)), user_access!user_id(access_id, access_definitions(name))')
         .order('email'),
       supabase.from('roles').select('id, name, description').order('id'),
       supabase.from('access_definitions')
@@ -640,6 +684,12 @@ export class Admin {
 
     this.loading.set(false);
     this.defsLoading.set(false);
+
+    const firstErr = u.error ?? r.error ?? defs.error;
+    if (firstErr) {
+      this.loadError.set(firstErr.message);
+      console.error('[Admin.load] supabase error:', firstErr);
+    }
 
     this.users.set(((u.data ?? []) as any[]).map(row => ({
       id: row.id,
@@ -663,6 +713,14 @@ export class Admin {
       })),
     })));
   }
+
+  openCreateUser() {
+    this.newUserEmail = '';
+    this.createError.set(null);
+    this.createdUser.set(null);
+    this.showCreate.set(true);
+  }
+  closeCreateUser() { this.showCreate.set(false); }
 
   // ─── Create user ─────────────────────────────────
   // Calls the admin_create_user(p_email) Postgres function, which:

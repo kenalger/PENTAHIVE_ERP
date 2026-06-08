@@ -11,7 +11,11 @@
   --float:#E2E8F0; --border:#E5E9EF; --rim:#CBD5E1; --mist:#94A3B8;
   --text:#0F172A; --sub:#475569; --dim:#94A3B8; --ghost:#CBD5E1;
 
-  --gold:#F2A841; --gold-d:#C8831A; --gold-bg:rgba(242,168,65,.16); --gold-rim:rgba(242,168,65,.35); --gold-text:#0B1118;
+  /* ── Accent = INK (monochrome chrome). Was gold; tokens kept so the whole
+        app re-skins from here. Light theme: near-black ink. Dark theme override
+        below flips it to near-white. Buttons/active-nav use this. ── */
+  --gold:#0F172A; --gold-d:#000000; --gold-bg:rgba(15,23,42,.06); --gold-rim:rgba(15,23,42,.20); --gold-text:#FFFFFF;
+  /* Semantic DATA colors — survive in monochrome (money / status only) */
   --jade:#10B981; --jade-d:#059669; --jade-bg:rgba(16,185,129,.14); --jade-rim:rgba(16,185,129,.32);
   --sky:#3B82F6; --sky-d:#2563EB; --sky-bg:rgba(59,130,246,.14); --sky-rim:rgba(59,130,246,.32);
   --rose:#F43F5E; --rose-d:#E11D48; --rose-bg:rgba(244,63,94,.14); --rose-rim:rgba(244,63,94,.32);
@@ -30,17 +34,18 @@
   --shadow:0 4px 18px rgba(15,23,42,.08); --shadow-lg:0 12px 40px rgba(15,23,42,.12);
   --row-hover:rgba(15,23,42,.025); --row-border:rgba(15,23,42,.06); --sum-border:rgba(15,23,42,.06);
 
-  /* ── ph-* aliases (kept for Login / ChangePassword / Dashboard components) ── */
-  --ph-brand-50:#eef2ff; --ph-brand-100:#e0e7ff; --ph-brand-200:#c7d2fe;
-  --ph-brand-500:#6366f1; --ph-brand-600:#4f46e5; --ph-brand-700:#4338ca;
-  --ph-brand-800:#3730a3; --ph-brand-900:#312e81;
-  --ph-accent-500:#2563eb; --ph-accent-600:#1d4ed8; --ph-accent-700:#1e40af;
+  /* ── ph-* aliases (kept for Login / ChangePassword / Dashboard components).
+        Repointed from indigo → neutral ink ramp so nothing is indigo anymore. ── */
+  --ph-brand-50:#F4F6FA; --ph-brand-100:#E5E9EF; --ph-brand-200:#CBD5E1;
+  --ph-brand-500:#475569; --ph-brand-600:#1E293B; --ph-brand-700:#0F172A;
+  --ph-brand-800:#0B1220; --ph-brand-900:#060A0F;
+  --ph-accent-500:#1E293B; --ph-accent-600:#0F172A; --ph-accent-700:#000000;
   --ph-bg:var(--void); --ph-surface:var(--surface); --ph-surface-2:var(--raised);
   --ph-border:var(--border); --ph-border-2:var(--rim);
   --ph-text:var(--text); --ph-text-2:var(--sub); --ph-muted:var(--sub); --ph-faint:var(--dim);
   --ph-side-bg:#0b1220; --ph-side-bg-2:#111a2e; --ph-side-border:#1f2a44;
   --ph-side-text:#cbd5e1; --ph-side-text-dim:#94a3b8;
-  --ph-side-active-bg:#1e293b; --ph-side-active-bd:#3b82f6;
+  --ph-side-active-bg:#1e293b; --ph-side-active-bd:#0F172A;
   --ph-success-50:#ecfdf5; --ph-success-600:#16a34a; --ph-success-700:#15803d;
   --ph-warn-50:#fffbeb; --ph-warn-600:#d97706; --ph-warn-700:#b45309;
   --ph-danger-50:#fef2f2; --ph-danger-600:#dc2626; --ph-danger-700:#b91c1c;
@@ -55,7 +60,9 @@ html[data-theme="dark"] {
   --void:#060A0F; --base:#0B1118; --surface:#111820; --raised:#182030;
   --float:#1E2838; --border:#1F2D3D; --rim:#263548; --mist:#2E4060;
   --text:#F0F4F8; --sub:#8FA3BF; --dim:#4A6080; --ghost:#2A3F55;
-  --gold-bg:rgba(242,168,65,.08); --gold-rim:rgba(242,168,65,.2);
+  /* Accent flips to near-white ink in dark; buttons get dark text on light fill */
+  --gold:#F0F4F8; --gold-d:#CBD5E1; --gold-text:#0B1118;
+  --gold-bg:rgba(240,244,248,.10); --gold-rim:rgba(240,244,248,.22);
   --jade-bg:rgba(16,185,129,.08); --jade-rim:rgba(16,185,129,.2);
   --sky-bg:rgba(59,130,246,.08); --sky-rim:rgba(59,130,246,.2);
   --rose-bg:rgba(244,63,94,.08); --rose-rim:rgba(244,63,94,.2);
@@ -82,7 +89,8 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a { color: var(--sky); text-decoration: none; }
+/* Links are chrome → ink, not blue. (Semantic blue --sky is reserved for data.) */
+a { color: var(--text); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 h1, h2, h3, h4, h5 {
@@ -225,6 +233,34 @@ table.ph-table { width: 100%; border-collapse: collapse; }
 .ph-grow  { flex: 1; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ============================================================
+   Skeleton loaders — shimmer placeholders for async data.
+   Usage:
+     <div class="skel skel-text" style="width:60%"></div>
+     <div class="skel" style="height:120px;border-radius:var(--r12)"></div>
+   Or a ready-made table-row skeleton: <tr class="skel-row">…</tr>
+   ============================================================ */
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--raised);
+  border-radius: var(--r6);
+}
+.skel::after {
+  content: '';
+  position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--row-hover), transparent);
+  /* fall back to a visible sweep tint in both themes */
+  background: linear-gradient(90deg, transparent 0%, rgba(148,163,184,.18) 50%, transparent 100%);
+  animation: skel-shimmer 1.35s ease-in-out infinite;
+}
+@keyframes skel-shimmer { 100% { transform: translateX(100%); } }
+.skel-text { height: 11px; }
+.skel-text + .skel-text { margin-top: 8px; }
+.skel-circle { border-radius: 50%; }
+@media (prefers-reduced-motion: reduce) { .skel::after { animation: none; } }
 
 /* Scrollbars */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
