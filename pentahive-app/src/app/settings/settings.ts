@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../auth.service';
 import { ThemeService } from '../theme.service';
@@ -497,6 +497,7 @@ const DEFAULT_NOTIFS: NotifPrefs = {
 export class Settings {
   auth = inject(AuthService);
   theme = inject(ThemeService);
+  private cdr = inject(ChangeDetectorRef);
 
   section = signal<Section>('profile');
 
@@ -526,10 +527,14 @@ export class Settings {
   notifs: NotifPrefs = { ...DEFAULT_NOTIFS };
   notifsMsg = signal<string | null>(null);
 
-  profileDirty = computed(() => this.profile.full_name !== this.initialFullName);
-  passwordValid = computed(() =>
-    this.security.password.length >= 8 && this.security.password === this.security.confirm
-  );
+  // Methods, not computed(): they read `this.profile` / `this.security`, plain
+  // [(ngModel)]-bound objects that are NOT signals. A computed() would freeze at
+  // its construction value, so the Save buttons' [disabled] state would never
+  // update as the user types. Methods re-evaluate every CD pass.
+  profileDirty() { return this.profile.full_name !== this.initialFullName; }
+  passwordValid() {
+    return this.security.password.length >= 8 && this.security.password === this.security.confirm;
+  }
 
   constructor() {
     // Load profile + assignments + notification prefs once we know who the user is.
@@ -553,6 +558,10 @@ export class Settings {
       .single();
     this.profile.full_name = data?.full_name ?? '';
     this.initialFullName = this.profile.full_name;
+    // profile is a plain [(ngModel)] object, not a signal; in this zoneless app the
+    // assignment after the await schedules no CD, so the loaded name would not appear
+    // in the input. Force a tick (don't rely on loadAssignments' set racing in).
+    this.cdr.markForCheck();
   }
 
   async saveProfile() {

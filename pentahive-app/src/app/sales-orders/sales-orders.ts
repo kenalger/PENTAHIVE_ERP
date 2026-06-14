@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { supabase } from '../supabase.client';
 import { Modal } from '../ui/modal';
@@ -74,7 +75,7 @@ const EMPTY_FORM = () => ({
       } @else {
         <div class="tw">
           <table class="ph-table">
-            <thead><tr><th>SO No.</th><th>Date</th><th>Customer</th><th>Stream</th><th class="tr">Total</th><th>Delivery</th><th>Status</th></tr></thead>
+            <thead><tr><th>SO No.</th><th>Date</th><th>Customer</th><th>Stream</th><th class="tr">Total</th><th>Delivery</th><th>Status</th><th></th></tr></thead>
             <tbody>
               @for (s of filtered(); track s.id) {
                 <tr>
@@ -85,6 +86,11 @@ const EMPTY_FORM = () => ({
                   <td class="mono tr fw6 tg">{{ peso(s.total) }}</td>
                   <td class="sub mono">{{ s.delivery_date || '—' }}</td>
                   <td><span [class]="badgeClass(s.status)">{{ statusLabel(s.status) }}</span></td>
+                  <td>
+                    @if (canInvoice(s) && auth.canDo('accounts-receivable','create')) {
+                      <button class="ph-btn ph-btn-ghost ph-btn-sm" (click)="goInvoice()">Create Invoice</button>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -111,11 +117,17 @@ const EMPTY_FORM = () => ({
               </div>
             } @else if (customer()) {
               <div class="credit-meter">
-                <span class="sub">Credit limit: <strong class="mono">{{ peso(customer()!.credit_limit) }}</strong></span>
-                <span class="sub">·</span>
-                <span class="sub">AR balance: <strong class="mono">{{ peso(customer()!.ar_balance) }}</strong></span>
-                <span class="sub">·</span>
-                <span class="sub">Available: <strong class="mono tg">{{ peso(creditAvailable()) }}</strong></span>
+                @if (hasCreditLimit()) {
+                  <span class="sub">Credit limit: <strong class="mono">{{ peso(customer()!.credit_limit) }}</strong></span>
+                  <span class="sub">·</span>
+                  <span class="sub">AR balance: <strong class="mono">{{ peso(customer()!.ar_balance) }}</strong></span>
+                  <span class="sub">·</span>
+                  <span class="sub">Available: <strong class="mono" [class.tg]="creditAvailable() >= 0" [class.cr]="creditAvailable() < 0">{{ peso(creditAvailable()) }}</strong></span>
+                } @else {
+                  <span class="sub">Credit limit: <strong class="mono tg">No limit set</strong></span>
+                  <span class="sub">·</span>
+                  <span class="sub">AR balance: <strong class="mono">{{ peso(customer()!.ar_balance) }}</strong></span>
+                }
               </div>
             }
           </div>
@@ -215,6 +227,7 @@ const EMPTY_FORM = () => ({
     .credit-meter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--sub); }
     .credit-meter .mono { font-family: var(--mono); color: var(--text); }
     .credit-meter .tg { color: var(--jade); }
+    .credit-meter .cr { color: var(--rose); }
 
     .lines { margin-top: 18px; }
     .lines-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .8px; }
@@ -240,6 +253,7 @@ const EMPTY_FORM = () => ({
 })
 export class SalesOrders {
   auth = inject(AuthService);
+  private router = inject(Router);
   rows = signal<SO[]>([]);
   customers = signal<CustomerLite[]>([]);
   items = signal<ItemLite[]>([]);
@@ -274,11 +288,19 @@ export class SalesOrders {
     };
   });
 
-  customer = computed(() => this.customers().find(c => c.id === this.form.customer_id) ?? null);
-  creditAvailable = computed(() => {
+  // Methods, not computed(): they read `this.form.customer_id`, a plain
+  // [(ngModel)]-bound object field that is NOT a signal. A computed() over a
+  // non-reactive source evaluates once and never re-runs, so customer() would
+  // stay null after the user picks a customer. Methods re-evaluate every CD pass.
+  customer() { return this.customers().find(c => c.id === this.form.customer_id) ?? null; }
+  // credit_limit 0/null means "no limit set" → treat as unlimited.
+  hasCreditLimit() { const c = this.customer(); return !!c && (Number(c.credit_limit) || 0) > 0; }
+  // Raw available (can go negative when already over) so the meter and the confirm
+  // check agree. Display colours negatives red in the template.
+  creditAvailable() {
     const c = this.customer();
-    return c ? Math.max(0, Number(c.credit_limit) - Number(c.ar_balance)) : 0;
-  });
+    return c ? Number(c.credit_limit) - Number(c.ar_balance) : 0;
+  }
 
   constructor() { this.load(); }
 
@@ -324,10 +346,25 @@ export class SalesOrders {
     if (!c) { this.formError.set('Pick a customer.'); return; }
     const lines = this.form.lines.filter(l => l.product && l.qty_bags > 0);
     if (lines.length === 0) { this.formError.set('Add at least one line.'); return; }
+    // A draft can legitimately have no prices yet; only a confirm must be > ₱0.
+    if (mode !== 'draft' && this.totalAmount() <= 0) {
+      this.formError.set('Order total is ₱0 — set a price on at least one line before confirming.');
+      return;
+    }
 
     let status: SO['status'] = mode === 'draft' ? 'draft' : 'confirmed';
-    if (mode !== 'draft' && c.status === 'credit_hold') {
-      status = 'credit_hold';
+    let overLimitMsg: string | null = null;
+    if (mode !== 'draft') {
+      // credit_limit 0/null means "no limit set" → unlimited, never hold.
+      const limit = Number(c.credit_limit) || 0;
+      const available = limit - Number(c.ar_balance);
+      const total = this.totalAmount();
+      if (c.status === 'credit_hold' || (limit > 0 && total > available)) {
+        status = 'credit_hold';
+        if (limit > 0 && total > available) {
+          overLimitMsg = `Over credit limit: ${this.peso(available)} available, order is ${this.peso(total)} — placed on credit hold.`;
+        }
+      }
     }
 
     this.saving.set(true);
@@ -361,9 +398,19 @@ export class SalesOrders {
     if (linesErr) { this.formError.set('Header saved but lines failed: ' + linesErr.message); this.saving.set(false); return; }
 
     this.saving.set(false);
+    if (overLimitMsg) {
+      // Order was persisted on credit hold; keep the dialog open so the operator
+      // sees why it was not confirmed.
+      this.formError.set(overLimitMsg);
+      await this.load();
+      return;
+    }
     this.closeCreate();
     await this.load();
   }
+
+  canInvoice(s: SO) { return s.status === 'confirmed' || s.status === 'in_transit' || s.status === 'delivered'; }
+  goInvoice() { this.router.navigate(['/milling/accounts-receivable']); }
 
   peso(n: number) { return '₱' + Math.round(n).toLocaleString(); }
   statusLabel(s: SO['status']) {

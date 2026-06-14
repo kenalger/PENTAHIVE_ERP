@@ -270,12 +270,17 @@ export class PurchaseOrders {
     };
   });
 
-  supplier = computed(() => this.suppliers().find(s => s.id === this.form.supplier_id) ?? null);
-  supplierEwtRate = computed(() => {
+  // Methods, not computed(): they read `this.form.supplier_id`, a plain
+  // [(ngModel)]-bound object field that is NOT a signal. A computed() over a
+  // non-reactive source evaluates once and never re-runs, so supplier() would
+  // stay null after the user picks a supplier and save() would TypeError on
+  // supplier()!.category. Methods re-evaluate every CD pass.
+  supplier() { return this.suppliers().find(s => s.id === this.form.supplier_id) ?? null; }
+  supplierEwtRate() {
     const s = this.supplier();
     return s && !s.bir_registered ? Number(s.ewt_rate) || 1 : 0;
-  });
-  ewtAmount = computed(() => this.totalAmount() * (this.supplierEwtRate() / 100));
+  }
+  ewtAmount() { return this.totalAmount() * (this.supplierEwtRate() / 100); }
 
   constructor() { this.load(); }
 
@@ -332,8 +337,10 @@ export class PurchaseOrders {
     const lines = this.form.lines.filter(l => l.description && l.qty > 0);
     if (lines.length === 0) { this.formError.set('Add at least one line.'); this.saving.set(false); return; }
 
-    const sup = this.supplier()!;
+    const sup = this.supplier();
+    if (!sup) { this.formError.set('Pick a supplier.'); this.saving.set(false); return; }
     const total = this.totalAmount();
+    if (total <= 0) { this.formError.set('PO total is ₱0 — set a unit price on at least one line.'); this.saving.set(false); return; }
     const ewtRate = this.supplierEwtRate();
     const ewtAmount = total * (ewtRate / 100);
 

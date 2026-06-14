@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../auth.service';
 import { supabase } from '../supabase.client';
@@ -206,6 +206,7 @@ const EMPTY_FORM = () => ({
 })
 export class GoodsReceipts {
   auth = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
   rows = signal<GRN[]>([]);
   poOptions = signal<POOption[]>([]);
   warehouses = signal<WHOption[]>([]);
@@ -267,6 +268,10 @@ export class GoodsReceipts {
       .order('line_no');
     if (error) { this.formError.set(error.message); return; }
     this.form.lines = (data ?? []).map((l: any) => ({ ...l, qty_received: Number(l.qty) }));
+    // form is a plain [(ngModel)] object, not a signal; in this zoneless app nothing
+    // schedules CD after the await, so the qty rows would not render until an unrelated
+    // field is touched. Force a tick.
+    this.cdr.markForCheck();
   }
 
   variance(l: RcvLine) { return (Number(l.qty_received) || 0) - Number(l.qty); }

@@ -218,7 +218,7 @@ const EMPTY_TOLL = () => ({
           </div>
           <div class="ph-field">
             <label class="ph-label">Recovery (auto)</label>
-            <input class="ph-input mono" type="text" [value]="batchRecovery() + '%'" readonly />
+            <input class="ph-input mono" type="text" [value]="batchRecovery + '%'" readonly />
           </div>
           <div class="ph-field">
             <label class="ph-label">Cost / Rice Sack</label>
@@ -280,7 +280,7 @@ const EMPTY_TOLL = () => ({
           </div>
           <div class="ph-field">
             <label class="ph-label">Recovery (auto)</label>
-            <input class="ph-input mono" type="text" [value]="tollRecovery() + '%'" readonly />
+            <input class="ph-input mono" type="text" [value]="tollRecovery + '%'" readonly />
           </div>
           <div class="ph-field">
             <label class="ph-label">Price / sack</label>
@@ -288,7 +288,7 @@ const EMPTY_TOLL = () => ({
           </div>
           <div class="ph-field">
             <label class="ph-label">Total (auto)</label>
-            <input class="ph-input mono tg" type="text" [value]="peso(tollTotal())" readonly />
+            <input class="ph-input mono tg" type="text" [value]="peso(tollTotal)" readonly />
           </div>
           <div class="ph-field">
             <label class="ph-label">Byproduct goes to</label>
@@ -406,23 +406,45 @@ export class Milling {
     };
   });
 
-  batchRecovery = computed(() => {
+  // Plain getters (not computed) — they read the [(ngModel)]-bound plain objects
+  // `this.batch` / `this.toll`, which are NOT signals. A computed() over a
+  // non-reactive source evaluates once and never re-runs, so it would stay 0.
+  // Getters re-evaluate every change-detection pass, so totals track edits live.
+  // recovery_pct is numeric(5,2) in Postgres (max 999.99). rice_out / bran_out /
+  // husk_out are all captured in MT (see "(MT)" labels), as is the paddy mass we
+  // derive from sacks_in × kg_per_sack. A physically sane recovery is ≤ 100%, but a
+  // typo (e.g. 8 MT rice from 0.5 MT paddy = 1600%) would overflow the column and
+  // throw a raw DB 400 — after the OR/batch number is already burned. We round to
+  // one decimal and clamp the STORED value at 999.99 so the insert never overflows;
+  // the save paths separately reject > 100% with a friendly inline error.
+  private static clampRecovery(pct: number): number {
+    if (!Number.isFinite(pct) || pct < 0) return 0;
+    return Math.min(999.99, Math.round(pct * 10) / 10);
+  }
+
+  get batchRecovery(): number {
     const sacks = Number(this.batch.sacks_in) || 0;
     const kg = Number(this.batch.kg_per_sack) || 0;
     const paddyMt = (sacks * kg) / 1000;
     const rice = Number(this.batch.rice_out) || 0;
-    return paddyMt > 0 ? Math.round((rice / paddyMt) * 1000) / 10 : 0;
-  });
+    return paddyMt > 0 ? Milling.clampRecovery((rice / paddyMt) * 100) : 0;
+  }
 
-  tollRecovery = computed(() => {
+  get tollRecovery(): number {
     const sacks = Number(this.toll.sacks_in) || 0;
     const kg = Number(this.toll.kg_per_sack) || 0;
     const paddyMt = (sacks * kg) / 1000;
     const rice = Number(this.toll.rice_out) || 0;
-    return paddyMt > 0 ? Math.round((rice / paddyMt) * 1000) / 10 : 0;
-  });
+    return paddyMt > 0 ? Milling.clampRecovery((rice / paddyMt) * 100) : 0;
+  }
 
-  tollTotal = computed(() => (Number(this.toll.sacks_in) || 0) * (Number(this.toll.price_per_sack) || 0));
+  get tollTotal(): number {
+    return (Number(this.toll.sacks_in) || 0) * (Number(this.toll.price_per_sack) || 0);
+  }
+
+  get batchTotalCost(): number {
+    return (Number(this.batch.rice_out) || 0) * 20 /* sacks per MT approx */ * (Number(this.batch.cost_per_rice_sack) || 0);
+  }
 
   constructor() { this.load(); }
 
@@ -447,11 +469,28 @@ export class Milling {
   async saveBatch() {
     this.saving.set(true);
     this.formError.set(null);
+
+    const recovery = this.batchRecovery;
+    const totalCost = this.batchTotalCost;
+
+    // A completed batch with no cost would post ₱0 to the GL and never bill.
+    // Planned / in-progress batches legitimately have no rice_out/cost yet.
+    if (this.batch.status === 'completed' && totalCost <= 0) {
+      this.formError.set('Total cost is ₱0 — enter rice out and cost per sack before completing the batch.');
+      this.saving.set(false);
+      return;
+    }
+
+    // Catch impossible inputs (rice out > paddy in) before we burn a batch number.
+    // clampRecovery would otherwise silently cap at 999.99 and store nonsense.
+    if (recovery > 100) {
+      this.formError.set('Recovery is over 100% — rice out (MT) exceeds the paddy milled. Check the rice-out figure and kg/sack.');
+      this.saving.set(false);
+      return;
+    }
+
     const { data: noData, error: noErr } = await supabase.rpc('next_doc_no', { p_series: 'MB' });
     if (noErr || !noData) { this.formError.set(noErr?.message || 'Failed to generate batch number'); this.saving.set(false); return; }
-
-    const recovery = this.batchRecovery();
-    const totalCost = (Number(this.batch.rice_out) || 0) * 20 /* sacks per MT approx */ * (Number(this.batch.cost_per_rice_sack) || 0);
 
     const payload = {
       batch_no: noData as string,
@@ -480,6 +519,22 @@ export class Milling {
   async saveToll() {
     this.saving.set(true);
     this.formError.set(null);
+
+    // A ₱0 toll job never bills and (zero-total guard) never posts to the GL.
+    if (this.tollTotal <= 0) {
+      this.formError.set('Total is ₱0 — enter sacks in and price per sack before logging the toll job.');
+      this.saving.set(false);
+      return;
+    }
+
+    // Catch impossible inputs (rice out > paddy in) before we burn an OR number.
+    // clampRecovery would otherwise silently cap at 999.99 and store nonsense.
+    if (this.tollRecovery > 100) {
+      this.formError.set('Recovery is over 100% — rice out (MT) exceeds the paddy milled. Check the rice-out figure and kg/sack.');
+      this.saving.set(false);
+      return;
+    }
+
     const { data: noData, error: noErr } = await supabase.rpc('next_doc_no', { p_series: 'TM' });
     if (noErr || !noData) { this.formError.set(noErr?.message || 'Failed to generate OR number'); this.saving.set(false); return; }
 
@@ -492,9 +547,9 @@ export class Milling {
       rice_out: Number(this.toll.rice_out) || 0,
       bran_out: Number(this.toll.bran_out) || 0,
       husk_out: Number(this.toll.husk_out) || 0,
-      recovery_pct: this.tollRecovery(),
+      recovery_pct: this.tollRecovery,
       price_per_sack: Number(this.toll.price_per_sack) || 0,
-      total: this.tollTotal(),
+      total: this.tollTotal,
       byproduct_disposition: this.toll.byproduct_disposition,
       notes: this.toll.notes || null,
     };

@@ -197,7 +197,10 @@ export class Weighbridge {
   formError = signal<string | null>(null);
   form = EMPTY_FORM();
 
-  netPreview = computed(() => (Number(this.form.gross) || 0) - (Number(this.form.tare) || 0));
+  // Method, not computed(): reads `this.form`, a plain [(ngModel)]-bound object
+  // that is NOT a signal, so a computed() would freeze the net preview at its
+  // construction value. A method re-evaluates every CD pass as gross/tare change.
+  netPreview() { return (Number(this.form.gross) || 0) - (Number(this.form.tare) || 0); }
 
   kpis = computed(() => {
     const r = this.rows();
