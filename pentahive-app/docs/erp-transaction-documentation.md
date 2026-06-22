@@ -1,4 +1,4 @@
-# PENTAHIVE / JKL ERP — Transaction Documentation
+# PENTAHIVE / RJL ERP — Transaction Documentation
 
 > Audience: Product Owner. Purpose: understand what each transaction in the system does, how documents flow into each other, and which transactions matter for the books.
 > Grounding: This document is derived from the **live Supabase schema** (project `zpfkhcnxtiyojodtmepn`) and the **actual Angular component code** under `src/app/`. Where the schema or code is silent or ambiguous, it is flagged as an open question rather than assumed.
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-PENTAHIVE / JKL is an operations ERP for an **agri / rice-milling business** that also runs a procurement function, a sales/distribution function, a weighbridge, and a fleet of vending machines ("vendos"). It is built on **Angular 21 + Supabase (Postgres)**.
+PENTAHIVE / RJL is an operations ERP for an **agri / rice-milling business** that also runs a procurement function, a sales/distribution function, a weighbridge, and a fleet of vending machines ("vendos"). It is built on **Angular 21 + Supabase (Postgres)**.
 
 The system today is best understood as a **transaction-capture and workflow layer**. It records business documents and moves them through status lifecycles, and it computes operational KPIs (recovery %, pass rate, revenue MTD, credit availability). It does **not yet contain an automated general-ledger / posting engine**: there are no posting triggers, and most "economic" side-effects (inventory movement on receipt/delivery, AR/AP balances, VAT, EWT remittance) are either captured as metadata or not captured at all. See Section 5 for the full list of gaps.
 

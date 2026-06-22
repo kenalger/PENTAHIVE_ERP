@@ -1,6 +1,6 @@
-# Accounting Assistant — Built-in Help Content (JKL ERP)
+# Accounting Assistant — Built-in Help Content (RJL ERP)
 
-> Authored by Beru (Accounting Domain Advisory) · 2026-06-13. All accounting facts anchored to the JKL Accounting Significance Advisory. Account names below are the exact seeded titles in the live Chart of Accounts. This file is the SOURCE for the in-app Accounting Assistant page — render PART 1/2 as guided content, PART 3 as a searchable Q&A index, PART 4 as cheat-sheet cards.
+> Authored by Beru (Accounting Domain Advisory) · 2026-06-13. All accounting facts anchored to the RJL Accounting Significance Advisory. Account names below are the exact seeded titles in the live Chart of Accounts. This file is the SOURCE for the in-app Accounting Assistant page — render PART 1/2 as guided content, PART 3 as a searchable Q&A index, PART 4 as cheat-sheet cards.
 
 ---
 

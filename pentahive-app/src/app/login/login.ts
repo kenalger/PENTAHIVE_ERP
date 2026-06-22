@@ -13,7 +13,7 @@ import { Icon } from '../ui/icon';
         <div class="brand-top">
           <div class="brand-mark">
             <span class="hex"><app-icon name="hexagon" [size]="20" /></span>
-            <span class="brand-name">JKL ERP</span>
+            <span class="brand-name">RJL ERP</span>
           </div>
           <span class="brand-tag">Enterprise Resource Platform</span>
         </div>
@@ -30,7 +30,7 @@ import { Icon } from '../ui/icon';
         </div>
 
         <div class="brand-foot">
-          <span>© {{ year }} JKL ERP</span>
+          <span>© {{ year }} RJL ERP</span>
           <span class="dot-sep">•</span>
           <span>v1.0</span>
         </div>

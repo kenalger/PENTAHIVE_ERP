@@ -41,19 +41,10 @@ const EMPTY_FORM = () => ({
   selector: 'app-sales-orders',
   imports: [FormsModule, Modal],
   template: `
-    <div class="krow k4">
-      <div class="kc kc-g"><span class="kc-ico">💹</span><div class="kc-lbl">Revenue MTD</div><div class="kc-val">{{ peso(kpis().revMtd) }}</div><div class="kc-sub">All streams</div></div>
-      <div class="kc kc-b"><span class="kc-ico">🌾</span><div class="kc-lbl">Local MTD</div><div class="kc-val">{{ peso(kpis().localMtd) }}</div><div class="kc-sub">{{ kpis().localCount }} orders</div></div>
-      <div class="kc kc-a"><span class="kc-ico">🚢</span><div class="kc-lbl">Import MTD</div><div class="kc-val">{{ peso(kpis().importMtd) }}</div><div class="kc-sub">{{ kpis().importCount }} orders</div></div>
+    <div class="krow k3">
+      <div class="kc kc-g"><span class="kc-ico">💹</span><div class="kc-lbl">Revenue MTD</div><div class="kc-val">{{ peso(kpis().revMtd) }}</div><div class="kc-sub">{{ kpis().localCount }} orders</div></div>
+      <div class="kc kc-b"><span class="kc-ico">🧾</span><div class="kc-lbl">Open Orders</div><div class="kc-val">{{ kpis().openCount }}</div><div class="kc-sub">Draft, confirmed &amp; in transit</div></div>
       <div class="kc kc-r"><span class="kc-ico">🚨</span><div class="kc-lbl">Credit Hold</div><div class="kc-val">{{ kpis().held }}</div><div class="kc-sub">Blocked by AR</div></div>
-    </div>
-
-    <div class="filter-row">
-      <div class="seg">
-        <button class="seg-opt" [class.on]="streamFilter() === 'all'"   (click)="streamFilter.set('all')">All</button>
-        <button class="seg-opt" [class.on]="streamFilter() === 'local'" (click)="streamFilter.set('local')">🌾 Local</button>
-        <button class="seg-opt" [class.on]="streamFilter() === 'import'"(click)="streamFilter.set('import')">🚢 Import</button>
-      </div>
     </div>
 
     <div class="card mb">
@@ -66,23 +57,22 @@ const EMPTY_FORM = () => ({
 
       @if (loading()) { <p class="sub" style="padding:16px 0">Loading…</p> }
       @else if (error()) { <div class="ph-alert ph-alert-error">{{ error() }}</div> }
-      @else if (filtered().length === 0) {
+      @else if (rows().length === 0) {
         <div class="empty">
           <div class="ico">🧾</div>
-          <div class="title">{{ rows().length === 0 ? 'No sales orders yet' : 'No SOs match this filter' }}</div>
-          @if (rows().length === 0) { <div class="hint">Click <strong>＋ New SO</strong> to create one.</div> }
+          <div class="title">No sales orders yet</div>
+          <div class="hint">Click <strong>＋ New SO</strong> to create one.</div>
         </div>
       } @else {
         <div class="tw">
           <table class="ph-table">
-            <thead><tr><th>SO No.</th><th>Date</th><th>Customer</th><th>Stream</th><th class="tr">Total</th><th>Delivery</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>SO No.</th><th>Date</th><th>Customer</th><th class="tr">Total</th><th>Delivery</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              @for (s of filtered(); track s.id) {
+              @for (s of rows(); track s.id) {
                 <tr>
                   <td class="mono tb">{{ s.no }}</td>
                   <td class="sub mono">{{ s.date }}</td>
                   <td>{{ s.customer_name || '—' }}</td>
-                  <td><span class="pill" [class.local]="s.stream==='local'" [class.import]="s.stream==='import'">{{ s.stream === 'local' ? '🌾 Local' : '🚢 Import' }}</span></td>
                   <td class="mono tr fw6 tg">{{ peso(s.total) }}</td>
                   <td class="sub mono">{{ s.delivery_date || '—' }}</td>
                   <td><span [class]="badgeClass(s.status)">{{ statusLabel(s.status) }}</span></td>
@@ -104,7 +94,7 @@ const EMPTY_FORM = () => ({
         <div class="form-grid">
           <div class="ph-field col-2">
             <label class="ph-label">Customer *</label>
-            <select class="ph-select" [(ngModel)]="form.customer_id" name="customer" required (change)="onCustomerChange()">
+            <select class="ph-select" [(ngModel)]="form.customer_id" name="customer" required>
               <option value="">— Select customer —</option>
               @for (c of customers(); track c.id) {
                 <option [value]="c.id">{{ c.name }} {{ c.status === 'credit_hold' ? '· 🔒 HOLD' : '' }}</option>
@@ -130,13 +120,6 @@ const EMPTY_FORM = () => ({
                 }
               </div>
             }
-          </div>
-          <div class="ph-field">
-            <label class="ph-label">Stream</label>
-            <select class="ph-select" [(ngModel)]="form.stream" name="stream">
-              <option value="local">🌾 Local</option>
-              <option value="import">🚢 Import</option>
-            </select>
           </div>
           <div class="ph-field">
             <label class="ph-label">Delivery Date</label>
@@ -212,11 +195,6 @@ const EMPTY_FORM = () => ({
     .kc-sub { font-size: 11px; color: var(--sub); }
     .mb { margin-bottom: 20px; }
 
-    .filter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .seg { display: inline-flex; background: var(--raised); border: 1px solid var(--rim); border-radius: var(--r8); padding: 3px; gap: 2px; }
-    .seg-opt { padding: 6px 14px; border-radius: var(--r6); cursor: pointer; font-size: 12px; color: var(--sub); font-weight: 500; background: transparent; border: none; }
-    .seg-opt.on { background: var(--gold); color: var(--gold-text); font-weight: 700; box-shadow: 0 2px 8px rgba(242,168,65,.25); }
-
     .empty { text-align: center; padding: 36px 18px; color: var(--sub); }
     .empty .ico { font-size: 36px; margin-bottom: 8px; opacity: 0.6; }
     .empty .title { font-size: 15px; color: var(--text); margin-bottom: 4px; font-weight: 600; }
@@ -238,10 +216,6 @@ const EMPTY_FORM = () => ({
     .rm-btn:hover { background: var(--rose-bg); border-radius: var(--r4); }
     .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
 
-    .pill { display: inline-flex; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: var(--raised); color: var(--sub); }
-    .pill.local  { background: var(--local-bg);  color: var(--local-deep); }
-    .pill.import { background: var(--import-bg); color: var(--import-deep); }
-
     .bs { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
     .s-draft   { background: var(--raised);   color: var(--sub); }
     .s-conf    { background: var(--jade-bg);  color: var(--jade);  border: 1px solid var(--jade-rim); }
@@ -260,30 +234,20 @@ export class SalesOrders {
   loading = signal(true);
   error = signal<string | null>(null);
 
-  streamFilter = signal<'all' | 'local' | 'import'>('all');
-
   showCreate = signal(false);
   saving = signal(false);
   formError = signal<string | null>(null);
   form = EMPTY_FORM();
 
-  filtered = computed(() => {
-    const f = this.streamFilter();
-    return f === 'all' ? this.rows() : this.rows().filter(s => s.stream === f);
-  });
-
   kpis = computed(() => {
     const r = this.rows();
     const thisMonth = new Date().toISOString().slice(0, 7);
     const mtd = r.filter(x => x.date.startsWith(thisMonth));
-    const local = mtd.filter(x => x.stream === 'local');
-    const imp = mtd.filter(x => x.stream === 'import');
+    const openStatuses = new Set<SO['status']>(['draft', 'confirmed', 'in_transit']);
     return {
       revMtd: mtd.reduce((s, x) => s + Number(x.total), 0),
-      localMtd: local.reduce((s, x) => s + Number(x.total), 0),
-      importMtd: imp.reduce((s, x) => s + Number(x.total), 0),
-      localCount: local.length,
-      importCount: imp.length,
+      localCount: mtd.length,
+      openCount: r.filter(x => openStatuses.has(x.status)).length,
       held: r.filter(x => x.status === 'credit_hold').length,
     };
   });
@@ -324,10 +288,6 @@ export class SalesOrders {
   openCreate() { this.form = EMPTY_FORM(); this.formError.set(null); this.showCreate.set(true); }
   closeCreate() { this.showCreate.set(false); }
 
-  onCustomerChange() {
-    const c = this.customer();
-    if (c?.stream === 'local' || c?.stream === 'import') this.form.stream = c.stream as 'local' | 'import';
-  }
   onItemPick(l: Line) {
     const it = this.items().find(x => x.id === l.item_id);
     if (it) {

@@ -1,4 +1,4 @@
-# Accounting Significance Advisory — PENTAHIVE / JKL ERP
+# Accounting Significance Advisory — PENTAHIVE / RJL ERP
 
 > Prepared by: Beru (Accounting Domain Advisory)
 > For: Product Owner, in response to Jinho's *ERP Transaction Documentation* (2026-06-13)
@@ -100,7 +100,7 @@ Dr  Creditable Withholding Tax (CWT) receivable   ewt   ← the 'ewt' field
 ```
 Exactly the QuickBooks/Xero "receive payment" + withholding-credit pattern. **Schema-verified:** `collections` carries `gross`, `ewt`, `net`, `mode`, `deposited_to`, and the relationship `net = gross − ewt` — so the data model is correctly shaped for this entry; it is simply **never posted (no UI reads/writes it).**
 
-**PH/BIR.** Where the customer is a withholding agent, the `ewt` they withhold is the company's **creditable withholding tax**, supported by the **Form 2307 the customer must issue to JKL** — this is an *asset* (a prepayment of income tax), claimed against 1701Q/1702Q. Under EOPT the **Official Receipt is now a supplementary/collection document** (not the VAT-reckoning document); VAT was already reckoned at the invoice. For VAT-exempt rice there is no VAT timing issue here at all. If a collection arrives with no prior invoice (cash sale), the invoice must still be the primary document issued.
+**PH/BIR.** Where the customer is a withholding agent, the `ewt` they withhold is the company's **creditable withholding tax**, supported by the **Form 2307 the customer must issue to RJL** — this is an *asset* (a prepayment of income tax), claimed against 1701Q/1702Q. Under EOPT the **Official Receipt is now a supplementary/collection document** (not the VAT-reckoning document); VAT was already reckoned at the invoice. For VAT-exempt rice there is no VAT timing issue here at all. If a collection arrives with no prior invoice (cash sale), the invoice must still be the primary document issued.
 
 **Supporting docs:** the OR (collection receipt), the Form 2307 received from the customer (file and tie to the income-tax return), bank deposit slip matching `deposited_to`.
 
@@ -161,7 +161,7 @@ If byproduct_disposition = 'rjl' (mill keeps bran/husk):
 Dr  Inventory — Bran/Husk             fair value
     Cr  Other income / byproduct income        fair value
 ```
-A service-fee sale; the customer's paddy never enters JKL inventory. **Verified:** `total`, `price_per_sack`, and `byproduct_disposition` exist; only a "Toll Revenue MTD" KPI is computed — no posting, no byproduct pickup.
+A service-fee sale; the customer's paddy never enters RJL inventory. **Verified:** `total`, `price_per_sack`, and `byproduct_disposition` exist; only a "Toll Revenue MTD" KPI is computed — no posting, no byproduct pickup.
 
 **PH/BIR — important exemption.** "**Milling for others of palay into rice**" is **VAT-EXEMPT under Sec 109(1)(F).** So **do not add 12% output VAT to the toll fee** for palay-to-rice milling. (Caveat per BIR guidance: independent toll *processing* that is **not** palay→rice / corn→grits / cane→raw-sugar **is** VATable at 12% — so a non-grain toll job would be VATable; classify by what is being milled.) Revenue is supported by a BIR-registered invoice; the OR documents collection. If the mill retains byproducts, their later *sale* follows the byproduct's own VAT status (bran/husk for feed is generally exempt).
 
@@ -182,11 +182,11 @@ Dr  Cash on Hand        gross-up    Dr  AR [customer]      gross-up
 ```
 **Verified:** `price`, `payment` (cash/credit), `customer` exist; `price` is summed into a KPI only — no cash, AR, or revenue posting.
 
-**PH/BIR.** **Weighing is a genuine service with no agricultural exemption — it is VATable at 12% if the entity is VAT-registered.** This makes JKL a **mixed-VAT entity** (exempt rice + exempt palay milling, *but* VATable weighing and possibly VATable byproduct/merchandise sales), which triggers **input-VAT allocation** between exempt and taxable activity (Sec 110). Each ticket should generate a BIR-registered invoice/receipt.
+**PH/BIR.** **Weighing is a genuine service with no agricultural exemption — it is VATable at 12% if the entity is VAT-registered.** This makes RJL a **mixed-VAT entity** (exempt rice + exempt palay milling, *but* VATable weighing and possibly VATable byproduct/merchandise sales), which triggers **input-VAT allocation** between exempt and taxable activity (Sec 110). Each ticket should generate a BIR-registered invoice/receipt.
 
 **Supporting docs:** weighbridge ticket, BIR-registered invoice/OR, customer TIN for credit/VATable customers.
 
-> **Beru's note (column):** If `price` is a weighing **fee**: *Dr Cash/AR / Cr Weighing revenue / Cr Output VAT 12%* — weighing is **VATable** (no exemption). If `price` is the **value of goods** weighed, it is a measurement input to a purchase/sale, not its own revenue (see §5 tree). Makes JKL a mixed-VAT entity → input-VAT must be allocated. **Today: KPI only.**
+> **Beru's note (column):** If `price` is a weighing **fee**: *Dr Cash/AR / Cr Weighing revenue / Cr Output VAT 12%* — weighing is **VATable** (no exemption). If `price` is the **value of goods** weighed, it is a measurement input to a purchase/sale, not its own revenue (see §5 tree). Makes RJL a mixed-VAT entity → input-VAT must be allocated. **Today: KPI only.**
 
 ---
 
@@ -280,8 +280,8 @@ Is the weighbridge being paid a fee to weigh someone else's vehicle/cargo?
 │        • Revenue event of its own.
 │        • Entry: Dr Cash (cash) or Dr AR (credit)  /  Cr Weighing fee revenue  /  Cr Output VAT 12%
 │        • VATable: weighing has NO agricultural exemption (Sec 108) → 12% if VAT-registered.
-│        • May make JKL a withholding-tax PAYEE: if the customer is a withholding agent,
-│          they withhold 1%/2% and must issue JKL a Form 2307 (book Dr CWT receivable).
+│        • May make RJL a withholding-tax PAYEE: if the customer is a withholding agent,
+│          they withhold 1%/2% and must issue RJL a Form 2307 (book Dr CWT receivable).
 │        • Requires a BIR-registered service invoice / OR per ticket.
 │
 └─ NO → the weight is being used to PRICE A PURCHASE OR SALE OF GRAIN

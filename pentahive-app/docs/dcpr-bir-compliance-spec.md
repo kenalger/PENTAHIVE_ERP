@@ -36,7 +36,7 @@ SINV (Dr AR / Cr Sales-Rice[exempt] or Sales-VATable + Output VAT 20), COLL (Dr 
 
 # DELIVERABLE 2 — BIR Compliance (v1)
 
-**Assumption:** JKL is **VAT-registered** (advisory default). Drive the module off a `gl_settings.vat_registered` flag; if non-VAT, VAT Summary → Percentage Tax 3% (2551Q) on VATable-type receipts, output VAT disappears.
+**Assumption:** RJL is **VAT-registered** (advisory default). Drive the module off a `gl_settings.vat_registered` flag; if non-VAT, VAT Summary → Percentage Tax 3% (2551Q) on VATable-type receipts, output VAT disappears.
 
 **v1 IN:** (1) VAT Summary [2550Q], (2) Sales Register/Book, (3) Purchase Register/Book, (4) CWT Receivable register [2307 received]. **v1 IN but DATA-LIMITED:** (5) EWT summary [1601-EQ + 2307 issued]. **DEFERRED:** printable Form 2307 (no ATC codes), creditable input-VAT schedule (none by design — ₱0+note), 1601-C/1701Q/1702Q/e-filing exports.
 

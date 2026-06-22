@@ -93,8 +93,9 @@ const MILLING_NAV: NavGroup[] = [
   {
     label: 'Treasury',
     items: [
-      { path: 'check-voucher', label: 'Check Voucher', icon: 'file-check', pageCode: 'check-voucher' },
-      { path: 'treasury',      label: 'Cash Position', icon: 'banknote',   pageCode: 'treasury' },
+      { path: 'check-voucher', label: 'Check Voucher',  icon: 'file-check', pageCode: 'check-voucher' },
+      { path: 'treasury',      label: 'Cash Position',  icon: 'banknote',   pageCode: 'treasury' },
+      { path: 'vendos',        label: 'Passive Income', icon: 'cup-soda',   pageCode: 'vendos' },
     ],
   },
   {
@@ -103,7 +104,6 @@ const MILLING_NAV: NavGroup[] = [
       { path: 'hr',      label: 'Employees', icon: 'user',       pageCode: 'hr' },
       { path: 'payroll', label: 'Payroll',   icon: 'briefcase',  pageCode: 'payroll' },
       { path: 'reports', label: 'Reports',   icon: 'line-chart', pageCode: 'reports' },
-      { path: 'vendos',  label: 'Vendos',    icon: 'cup-soda',   pageCode: 'vendos' },
     ],
   },
   {
@@ -120,9 +120,9 @@ const MILLING_NAV: NavGroup[] = [
   template: `
     <aside id="sb">
       <div class="sb-logo">
-        <div class="sb-mark">JKL</div>
+        <div class="sb-mark">RJL</div>
         <div>
-          <div class="sb-name">JKL ERP</div>
+          <div class="sb-name">RJL ERP</div>
           <div class="sb-ver">{{ workspaceMeta()?.name || workspace() }} workspace</div>
         </div>
       </div>
@@ -386,7 +386,7 @@ export class Shell {
     return null;
   });
 
-  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'JKL ERP');
+  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'RJL ERP');
   activeGroup = computed(() => {
     const item = this.activeNavItem();
     if (!item) return 'Overview';

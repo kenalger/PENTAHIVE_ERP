@@ -194,7 +194,12 @@ export const routes: Routes = [
       },
 
       // Importation
-      ph('importation', 'Shipments', '🚢'),
+      {
+        path: 'importation',
+        loadComponent: () => import('./importation/importation').then(m => m.Importation),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'importation' },
+      },
 
       // Accounting
       {

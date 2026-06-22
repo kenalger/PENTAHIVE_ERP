@@ -44,11 +44,10 @@ const EMPTY_FORM = () => ({
   selector: 'app-purchase-orders',
   imports: [FormsModule, Modal],
   template: `
-    <div class="krow k4">
+    <div class="krow k3">
       <div class="kc kc-a"><span class="kc-ico">📋</span><div class="kc-lbl">Open POs</div><div class="kc-val">{{ kpis().open }}</div><div class="kc-sub">{{ peso(kpis().openValue) }} total</div></div>
       <div class="kc kc-g"><span class="kc-ico">✅</span><div class="kc-lbl">Received MTD</div><div class="kc-val">{{ kpis().received }}</div><div class="kc-sub">Completed this month</div></div>
       <div class="kc kc-r"><span class="kc-ico">⏰</span><div class="kc-lbl">Overdue</div><div class="kc-val">{{ kpis().overdue }}</div><div class="kc-sub">Past expected date</div></div>
-      <div class="kc kc-b"><span class="kc-ico">💱</span><div class="kc-lbl">Import POs</div><div class="kc-val">{{ kpis().importCount }}</div><div class="kc-sub">FX exposure</div></div>
     </div>
 
     <div class="card mb">
@@ -70,14 +69,13 @@ const EMPTY_FORM = () => ({
       } @else {
         <div class="tw">
           <table class="ph-table">
-            <thead><tr><th>PO No.</th><th>Date</th><th>Supplier</th><th>Stream</th><th>BIR</th><th class="tr">Total</th><th>Expected</th><th>EWT</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>PO No.</th><th>Date</th><th>Supplier</th><th>BIR</th><th class="tr">Total</th><th>Expected</th><th>EWT</th><th>Status</th><th></th></tr></thead>
             <tbody>
               @for (p of rows(); track p.id) {
                 <tr>
                   <td class="mono ta">{{ p.no }}</td>
                   <td class="sub mono">{{ p.date }}</td>
                   <td>{{ p.supplier_name || '—' }}</td>
-                  <td><span class="pill" [class.local]="p.stream==='local'" [class.import]="p.stream==='import'">{{ p.stream === 'local' ? '🌾 Local' : '🚢 Import' }}</span></td>
                   <td>
                     @if (p.bir_registered) { <span class="bs s-ok" style="font-size:10px">✔ BIR</span> }
                     @else { <span class="bs s-err" style="font-size:10px">✘ No BIR</span> }
@@ -113,18 +111,11 @@ const EMPTY_FORM = () => ({
         <div class="form-grid">
           <div class="ph-field col-2">
             <label class="ph-label">Supplier *</label>
-            <select class="ph-select" [(ngModel)]="form.supplier_id" name="supplier" required (change)="onSupplierChange()">
+            <select class="ph-select" [(ngModel)]="form.supplier_id" name="supplier" required>
               <option value="">— Select supplier —</option>
               @for (s of suppliers(); track s.id) {
                 <option [value]="s.id">{{ s.name }} {{ s.bir_registered ? '· BIR' : '· No BIR' }}</option>
               }
-            </select>
-          </div>
-          <div class="ph-field">
-            <label class="ph-label">Stream</label>
-            <select class="ph-select" [(ngModel)]="form.stream" name="stream">
-              <option value="local">🌾 Local</option>
-              <option value="import">🚢 Import</option>
             </select>
           </div>
           <div class="ph-field">
@@ -225,10 +216,6 @@ const EMPTY_FORM = () => ({
 
     .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
 
-    .pill { display: inline-flex; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: var(--raised); color: var(--sub); }
-    .pill.local  { background: var(--local-bg);  color: var(--local-deep); }
-    .pill.import { background: var(--import-bg); color: var(--import-deep); }
-
     .bs { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
     .s-ok { background: var(--jade-bg); color: var(--jade); border: 1px solid var(--jade-rim); }
     .s-err { background: var(--rose-bg); color: var(--rose); border: 1px solid var(--rose-rim); }
@@ -264,7 +251,6 @@ export class PurchaseOrders {
       openValue: r.filter(x => openStatuses.has(x.status)).reduce((s, x) => s + Number(x.total), 0),
       received: r.filter(x => x.status === 'received' && x.date.startsWith(thisMonth)).length,
       overdue: r.filter(x => x.expected_date && x.expected_date < today && (x.status === 'pending_approval' || x.status === 'approved' || x.status === 'in_transit')).length,
-      importCount: r.filter(x => x.stream === 'import' && openStatuses.has(x.status)).length,
       ewtPos: r.filter(x => !x.bir_registered && openStatuses.has(x.status)).length,
       ewtRemit: r.filter(x => !x.bir_registered && openStatuses.has(x.status)).reduce((s, x) => s + Number(x.ewt_amount), 0),
     };
@@ -309,12 +295,6 @@ export class PurchaseOrders {
   openCreate() { this.form = EMPTY_FORM(); this.formError.set(null); this.showCreate.set(true); }
   closeCreate() { this.showCreate.set(false); }
 
-  onSupplierChange() {
-    const s = this.supplier();
-    if (!s) return;
-    // Auto-set stream from origin
-    this.form.stream = (s.origin && !/^(local|ph|philippines)$/i.test(s.origin)) ? 'import' : 'local';
-  }
   onItemPick(l: Line) {
     const it = this.items().find(x => x.id === l.item_id);
     if (it) {
