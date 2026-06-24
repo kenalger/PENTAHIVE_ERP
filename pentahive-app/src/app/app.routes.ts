@@ -118,8 +118,30 @@ export const routes: Routes = [
         canActivate: [pageAccessGuard],
         data: { pageCode: 'deliveries' },
       },
-      ph('accounts-receivable', 'Accounts Receivable','💰'),
-      ph('dcpr',                'DCPR',               '📒'),
+      {
+        path: 'sales-invoices',
+        loadComponent: () => import('./sales-invoices/sales-invoices').then(m => m.SalesInvoices),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'sales-invoices' },
+      },
+      {
+        path: 'collections',
+        loadComponent: () => import('./collections/collections').then(m => m.Collections),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'collections' },
+      },
+      {
+        path: 'accounts-receivable',
+        loadComponent: () => import('./accounts-receivable/accounts-receivable').then(m => m.AccountsReceivable),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'accounts-receivable' },
+      },
+      {
+        path: 'dcpr',
+        loadComponent: () => import('./dcpr/dcpr').then(m => m.Dcpr),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'dcpr' },
+      },
 
       // Procurement
       {
@@ -153,6 +175,12 @@ export const routes: Routes = [
         data: { pageCode: 'goods-receipts' },
       },
       {
+        path: 'supplier-invoices',
+        loadComponent: () => import('./supplier-invoices/supplier-invoices').then(m => m.SupplierInvoices),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'supplier-invoices' },
+      },
+      {
         path: 'items',
         loadComponent: () => import('./items/items').then(m => m.Items),
         canActivate: [pageAccessGuard],
@@ -166,15 +194,58 @@ export const routes: Routes = [
       },
 
       // Importation
-      ph('importation', 'Shipments', '🚢'),
+      {
+        path: 'importation',
+        loadComponent: () => import('./importation/importation').then(m => m.Importation),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'importation' },
+      },
 
       // Accounting
-      ph('general-ledger',   'General Ledger',   '📊'),
-      ph('accounts-payable', 'Accounts Payable', '💳'),
-      ph('bir-compliance',   'BIR Compliance',   '🏛️'),
+      {
+        path: 'chart-of-accounts',
+        loadComponent: () => import('./chart-of-accounts/chart-of-accounts').then(m => m.ChartOfAccounts),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'chart-of-accounts' },
+      },
+      {
+        path: 'help-center',
+        loadComponent: () => import('./help-center/help-center').then(m => m.HelpCenter),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'help-center' },
+      },
+      {
+        path: 'general-ledger',
+        loadComponent: () => import('./general-ledger/general-ledger').then(m => m.GeneralLedger),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'general-ledger' },
+      },
+      {
+        path: 'accounts-payable',
+        loadComponent: () => import('./accounts-payable/accounts-payable').then(m => m.AccountsPayable),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'accounts-payable' },
+      },
+      {
+        path: 'bir-compliance',
+        loadComponent: () => import('./bir-compliance/bir-compliance').then(m => m.BirCompliance),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'bir-compliance' },
+      },
 
       // Treasury
-      ph('treasury', 'Cash Position', '🏦'),
+      {
+        path: 'check-voucher',
+        loadComponent: () => import('./check-voucher/check-voucher').then(m => m.CheckVoucher),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'check-voucher' },
+      },
+      {
+        path: 'treasury',
+        loadComponent: () => import('./cash-position/cash-position').then(m => m.CashPosition),
+        canActivate: [pageAccessGuard],
+        data: { pageCode: 'treasury', title: 'Cash Position', icon: '🏦' },
+      },
 
       // HR & Reports
       ph('hr',      'Employees', '👤'),

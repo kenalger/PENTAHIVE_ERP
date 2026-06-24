@@ -56,6 +56,8 @@ const MILLING_NAV: NavGroup[] = [
       { path: 'customers',           label: 'Customers',          icon: 'users',        pageCode: 'customers' },
       { path: 'sales-orders',        label: 'Sales Orders',       icon: 'receipt-text', pageCode: 'sales-orders' },
       { path: 'deliveries',          label: 'Delivery',           icon: 'truck',        pageCode: 'deliveries' },
+      { path: 'sales-invoices',      label: 'Sales Invoices',     icon: 'receipt',      pageCode: 'sales-invoices' },
+      { path: 'collections',         label: 'Collections',        icon: 'hand-coins',   pageCode: 'collections' },
     ],
   },
   {
@@ -66,6 +68,7 @@ const MILLING_NAV: NavGroup[] = [
       { path: 'canvasses',         label: 'Canvasses',         icon: 'clipboard-check', pageCode: 'canvasses' },
       { path: 'purchase-orders',   label: 'Purchase Orders',   icon: 'package',         pageCode: 'purchase-orders' },
       { path: 'goods-receipts',    label: 'Goods Receipt',     icon: 'inbox',           pageCode: 'goods-receipts' },
+      { path: 'supplier-invoices', label: 'Supplier Invoices', icon: 'file-text',       pageCode: 'supplier-invoices' },
       { path: 'items',             label: 'Items',             icon: 'tag',             pageCode: 'items' },
       { path: 'warehouses',        label: 'Warehouses',        icon: 'warehouse',       pageCode: 'warehouses' },
     ],
@@ -79,6 +82,7 @@ const MILLING_NAV: NavGroup[] = [
   {
     label: 'Accounting',
     items: [
+      { path: 'chart-of-accounts',   label: 'Chart of Accounts',  icon: 'library',      pageCode: 'chart-of-accounts' },
       { path: 'general-ledger',      label: 'General Ledger',     icon: 'book-open',    pageCode: 'general-ledger' },
       { path: 'accounts-payable',    label: 'Accounts Payable',   icon: 'credit-card',  pageCode: 'accounts-payable' },
       { path: 'accounts-receivable', label: 'Accounts Receivable',icon: 'wallet',       pageCode: 'accounts-receivable' },
@@ -89,7 +93,9 @@ const MILLING_NAV: NavGroup[] = [
   {
     label: 'Treasury',
     items: [
-      { path: 'treasury', label: 'Cash Position', icon: 'banknote', pageCode: 'treasury' },
+      { path: 'check-voucher', label: 'Check Voucher',  icon: 'file-check', pageCode: 'check-voucher' },
+      { path: 'treasury',      label: 'Cash Position',  icon: 'banknote',   pageCode: 'treasury' },
+      { path: 'vendos',        label: 'Passive Income', icon: 'cup-soda',   pageCode: 'vendos' },
     ],
   },
   {
@@ -98,7 +104,12 @@ const MILLING_NAV: NavGroup[] = [
       { path: 'hr',      label: 'Employees', icon: 'user',       pageCode: 'hr' },
       { path: 'payroll', label: 'Payroll',   icon: 'briefcase',  pageCode: 'payroll' },
       { path: 'reports', label: 'Reports',   icon: 'line-chart', pageCode: 'reports' },
-      { path: 'vendos',  label: 'Vendos',    icon: 'cup-soda',   pageCode: 'vendos' },
+    ],
+  },
+  {
+    label: 'Help',
+    items: [
+      { path: 'help-center', label: 'Help Center', icon: 'life-buoy', pageCode: 'help-center', badge: { text: 'HELP', kind: 'green' } },
     ],
   },
 ];
@@ -109,9 +120,9 @@ const MILLING_NAV: NavGroup[] = [
   template: `
     <aside id="sb">
       <div class="sb-logo">
-        <div class="sb-mark">JKL</div>
+        <div class="sb-mark">RJL</div>
         <div>
-          <div class="sb-name">JKL ERP</div>
+          <div class="sb-name">RJL ERP</div>
           <div class="sb-ver">{{ workspaceMeta()?.name || workspace() }} workspace</div>
         </div>
       </div>
@@ -375,7 +386,7 @@ export class Shell {
     return null;
   });
 
-  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'JKL ERP');
+  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'RJL ERP');
   activeGroup = computed(() => {
     const item = this.activeNavItem();
     if (!item) return 'Overview';

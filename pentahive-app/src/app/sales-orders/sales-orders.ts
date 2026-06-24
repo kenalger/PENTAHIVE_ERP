@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { supabase } from '../supabase.client';
 import { Modal } from '../ui/modal';
@@ -40,19 +41,10 @@ const EMPTY_FORM = () => ({
   selector: 'app-sales-orders',
   imports: [FormsModule, Modal],
   template: `
-    <div class="krow k4">
-      <div class="kc kc-g"><span class="kc-ico">💹</span><div class="kc-lbl">Revenue MTD</div><div class="kc-val">{{ peso(kpis().revMtd) }}</div><div class="kc-sub">All streams</div></div>
-      <div class="kc kc-b"><span class="kc-ico">🌾</span><div class="kc-lbl">Local MTD</div><div class="kc-val">{{ peso(kpis().localMtd) }}</div><div class="kc-sub">{{ kpis().localCount }} orders</div></div>
-      <div class="kc kc-a"><span class="kc-ico">🚢</span><div class="kc-lbl">Import MTD</div><div class="kc-val">{{ peso(kpis().importMtd) }}</div><div class="kc-sub">{{ kpis().importCount }} orders</div></div>
+    <div class="krow k3">
+      <div class="kc kc-g"><span class="kc-ico">💹</span><div class="kc-lbl">Revenue MTD</div><div class="kc-val">{{ peso(kpis().revMtd) }}</div><div class="kc-sub">{{ kpis().localCount }} orders</div></div>
+      <div class="kc kc-b"><span class="kc-ico">🧾</span><div class="kc-lbl">Open Orders</div><div class="kc-val">{{ kpis().openCount }}</div><div class="kc-sub">Draft, confirmed &amp; in transit</div></div>
       <div class="kc kc-r"><span class="kc-ico">🚨</span><div class="kc-lbl">Credit Hold</div><div class="kc-val">{{ kpis().held }}</div><div class="kc-sub">Blocked by AR</div></div>
-    </div>
-
-    <div class="filter-row">
-      <div class="seg">
-        <button class="seg-opt" [class.on]="streamFilter() === 'all'"   (click)="streamFilter.set('all')">All</button>
-        <button class="seg-opt" [class.on]="streamFilter() === 'local'" (click)="streamFilter.set('local')">🌾 Local</button>
-        <button class="seg-opt" [class.on]="streamFilter() === 'import'"(click)="streamFilter.set('import')">🚢 Import</button>
-      </div>
     </div>
 
     <div class="card mb">
@@ -65,26 +57,30 @@ const EMPTY_FORM = () => ({
 
       @if (loading()) { <p class="sub" style="padding:16px 0">Loading…</p> }
       @else if (error()) { <div class="ph-alert ph-alert-error">{{ error() }}</div> }
-      @else if (filtered().length === 0) {
+      @else if (rows().length === 0) {
         <div class="empty">
           <div class="ico">🧾</div>
-          <div class="title">{{ rows().length === 0 ? 'No sales orders yet' : 'No SOs match this filter' }}</div>
-          @if (rows().length === 0) { <div class="hint">Click <strong>＋ New SO</strong> to create one.</div> }
+          <div class="title">No sales orders yet</div>
+          <div class="hint">Click <strong>＋ New SO</strong> to create one.</div>
         </div>
       } @else {
         <div class="tw">
           <table class="ph-table">
-            <thead><tr><th>SO No.</th><th>Date</th><th>Customer</th><th>Stream</th><th class="tr">Total</th><th>Delivery</th><th>Status</th></tr></thead>
+            <thead><tr><th>SO No.</th><th>Date</th><th>Customer</th><th class="tr">Total</th><th>Delivery</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              @for (s of filtered(); track s.id) {
+              @for (s of rows(); track s.id) {
                 <tr>
                   <td class="mono tb">{{ s.no }}</td>
                   <td class="sub mono">{{ s.date }}</td>
                   <td>{{ s.customer_name || '—' }}</td>
-                  <td><span class="pill" [class.local]="s.stream==='local'" [class.import]="s.stream==='import'">{{ s.stream === 'local' ? '🌾 Local' : '🚢 Import' }}</span></td>
                   <td class="mono tr fw6 tg">{{ peso(s.total) }}</td>
                   <td class="sub mono">{{ s.delivery_date || '—' }}</td>
                   <td><span [class]="badgeClass(s.status)">{{ statusLabel(s.status) }}</span></td>
+                  <td>
+                    @if (canInvoice(s) && auth.canDo('accounts-receivable','create')) {
+                      <button class="ph-btn ph-btn-ghost ph-btn-sm" (click)="goInvoice()">Create Invoice</button>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -98,7 +94,7 @@ const EMPTY_FORM = () => ({
         <div class="form-grid">
           <div class="ph-field col-2">
             <label class="ph-label">Customer *</label>
-            <select class="ph-select" [(ngModel)]="form.customer_id" name="customer" required (change)="onCustomerChange()">
+            <select class="ph-select" [(ngModel)]="form.customer_id" name="customer" required>
               <option value="">— Select customer —</option>
               @for (c of customers(); track c.id) {
                 <option [value]="c.id">{{ c.name }} {{ c.status === 'credit_hold' ? '· 🔒 HOLD' : '' }}</option>
@@ -111,20 +107,19 @@ const EMPTY_FORM = () => ({
               </div>
             } @else if (customer()) {
               <div class="credit-meter">
-                <span class="sub">Credit limit: <strong class="mono">{{ peso(customer()!.credit_limit) }}</strong></span>
-                <span class="sub">·</span>
-                <span class="sub">AR balance: <strong class="mono">{{ peso(customer()!.ar_balance) }}</strong></span>
-                <span class="sub">·</span>
-                <span class="sub">Available: <strong class="mono tg">{{ peso(creditAvailable()) }}</strong></span>
+                @if (hasCreditLimit()) {
+                  <span class="sub">Credit limit: <strong class="mono">{{ peso(customer()!.credit_limit) }}</strong></span>
+                  <span class="sub">·</span>
+                  <span class="sub">AR balance: <strong class="mono">{{ peso(customer()!.ar_balance) }}</strong></span>
+                  <span class="sub">·</span>
+                  <span class="sub">Available: <strong class="mono" [class.tg]="creditAvailable() >= 0" [class.cr]="creditAvailable() < 0">{{ peso(creditAvailable()) }}</strong></span>
+                } @else {
+                  <span class="sub">Credit limit: <strong class="mono tg">No limit set</strong></span>
+                  <span class="sub">·</span>
+                  <span class="sub">AR balance: <strong class="mono">{{ peso(customer()!.ar_balance) }}</strong></span>
+                }
               </div>
             }
-          </div>
-          <div class="ph-field">
-            <label class="ph-label">Stream</label>
-            <select class="ph-select" [(ngModel)]="form.stream" name="stream">
-              <option value="local">🌾 Local</option>
-              <option value="import">🚢 Import</option>
-            </select>
           </div>
           <div class="ph-field">
             <label class="ph-label">Delivery Date</label>
@@ -200,11 +195,6 @@ const EMPTY_FORM = () => ({
     .kc-sub { font-size: 11px; color: var(--sub); }
     .mb { margin-bottom: 20px; }
 
-    .filter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .seg { display: inline-flex; background: var(--raised); border: 1px solid var(--rim); border-radius: var(--r8); padding: 3px; gap: 2px; }
-    .seg-opt { padding: 6px 14px; border-radius: var(--r6); cursor: pointer; font-size: 12px; color: var(--sub); font-weight: 500; background: transparent; border: none; }
-    .seg-opt.on { background: var(--gold); color: var(--gold-text); font-weight: 700; box-shadow: 0 2px 8px rgba(242,168,65,.25); }
-
     .empty { text-align: center; padding: 36px 18px; color: var(--sub); }
     .empty .ico { font-size: 36px; margin-bottom: 8px; opacity: 0.6; }
     .empty .title { font-size: 15px; color: var(--text); margin-bottom: 4px; font-weight: 600; }
@@ -215,6 +205,7 @@ const EMPTY_FORM = () => ({
     .credit-meter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--sub); }
     .credit-meter .mono { font-family: var(--mono); color: var(--text); }
     .credit-meter .tg { color: var(--jade); }
+    .credit-meter .cr { color: var(--rose); }
 
     .lines { margin-top: 18px; }
     .lines-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .8px; }
@@ -224,10 +215,6 @@ const EMPTY_FORM = () => ({
     .rm-btn { background: none; border: none; color: var(--rose); font-size: 20px; cursor: pointer; line-height: 1; padding: 0; width: 24px; height: 24px; }
     .rm-btn:hover { background: var(--rose-bg); border-radius: var(--r4); }
     .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-
-    .pill { display: inline-flex; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; background: var(--raised); color: var(--sub); }
-    .pill.local  { background: var(--local-bg);  color: var(--local-deep); }
-    .pill.import { background: var(--import-bg); color: var(--import-deep); }
 
     .bs { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
     .s-draft   { background: var(--raised);   color: var(--sub); }
@@ -240,45 +227,44 @@ const EMPTY_FORM = () => ({
 })
 export class SalesOrders {
   auth = inject(AuthService);
+  private router = inject(Router);
   rows = signal<SO[]>([]);
   customers = signal<CustomerLite[]>([]);
   items = signal<ItemLite[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
 
-  streamFilter = signal<'all' | 'local' | 'import'>('all');
-
   showCreate = signal(false);
   saving = signal(false);
   formError = signal<string | null>(null);
   form = EMPTY_FORM();
 
-  filtered = computed(() => {
-    const f = this.streamFilter();
-    return f === 'all' ? this.rows() : this.rows().filter(s => s.stream === f);
-  });
-
   kpis = computed(() => {
     const r = this.rows();
     const thisMonth = new Date().toISOString().slice(0, 7);
     const mtd = r.filter(x => x.date.startsWith(thisMonth));
-    const local = mtd.filter(x => x.stream === 'local');
-    const imp = mtd.filter(x => x.stream === 'import');
+    const openStatuses = new Set<SO['status']>(['draft', 'confirmed', 'in_transit']);
     return {
       revMtd: mtd.reduce((s, x) => s + Number(x.total), 0),
-      localMtd: local.reduce((s, x) => s + Number(x.total), 0),
-      importMtd: imp.reduce((s, x) => s + Number(x.total), 0),
-      localCount: local.length,
-      importCount: imp.length,
+      localCount: mtd.length,
+      openCount: r.filter(x => openStatuses.has(x.status)).length,
       held: r.filter(x => x.status === 'credit_hold').length,
     };
   });
 
-  customer = computed(() => this.customers().find(c => c.id === this.form.customer_id) ?? null);
-  creditAvailable = computed(() => {
+  // Methods, not computed(): they read `this.form.customer_id`, a plain
+  // [(ngModel)]-bound object field that is NOT a signal. A computed() over a
+  // non-reactive source evaluates once and never re-runs, so customer() would
+  // stay null after the user picks a customer. Methods re-evaluate every CD pass.
+  customer() { return this.customers().find(c => c.id === this.form.customer_id) ?? null; }
+  // credit_limit 0/null means "no limit set" → treat as unlimited.
+  hasCreditLimit() { const c = this.customer(); return !!c && (Number(c.credit_limit) || 0) > 0; }
+  // Raw available (can go negative when already over) so the meter and the confirm
+  // check agree. Display colours negatives red in the template.
+  creditAvailable() {
     const c = this.customer();
-    return c ? Math.max(0, Number(c.credit_limit) - Number(c.ar_balance)) : 0;
-  });
+    return c ? Number(c.credit_limit) - Number(c.ar_balance) : 0;
+  }
 
   constructor() { this.load(); }
 
@@ -302,10 +288,6 @@ export class SalesOrders {
   openCreate() { this.form = EMPTY_FORM(); this.formError.set(null); this.showCreate.set(true); }
   closeCreate() { this.showCreate.set(false); }
 
-  onCustomerChange() {
-    const c = this.customer();
-    if (c?.stream === 'local' || c?.stream === 'import') this.form.stream = c.stream as 'local' | 'import';
-  }
   onItemPick(l: Line) {
     const it = this.items().find(x => x.id === l.item_id);
     if (it) {
@@ -324,10 +306,25 @@ export class SalesOrders {
     if (!c) { this.formError.set('Pick a customer.'); return; }
     const lines = this.form.lines.filter(l => l.product && l.qty_bags > 0);
     if (lines.length === 0) { this.formError.set('Add at least one line.'); return; }
+    // A draft can legitimately have no prices yet; only a confirm must be > ₱0.
+    if (mode !== 'draft' && this.totalAmount() <= 0) {
+      this.formError.set('Order total is ₱0 — set a price on at least one line before confirming.');
+      return;
+    }
 
     let status: SO['status'] = mode === 'draft' ? 'draft' : 'confirmed';
-    if (mode !== 'draft' && c.status === 'credit_hold') {
-      status = 'credit_hold';
+    let overLimitMsg: string | null = null;
+    if (mode !== 'draft') {
+      // credit_limit 0/null means "no limit set" → unlimited, never hold.
+      const limit = Number(c.credit_limit) || 0;
+      const available = limit - Number(c.ar_balance);
+      const total = this.totalAmount();
+      if (c.status === 'credit_hold' || (limit > 0 && total > available)) {
+        status = 'credit_hold';
+        if (limit > 0 && total > available) {
+          overLimitMsg = `Over credit limit: ${this.peso(available)} available, order is ${this.peso(total)} — placed on credit hold.`;
+        }
+      }
     }
 
     this.saving.set(true);
@@ -361,9 +358,19 @@ export class SalesOrders {
     if (linesErr) { this.formError.set('Header saved but lines failed: ' + linesErr.message); this.saving.set(false); return; }
 
     this.saving.set(false);
+    if (overLimitMsg) {
+      // Order was persisted on credit hold; keep the dialog open so the operator
+      // sees why it was not confirmed.
+      this.formError.set(overLimitMsg);
+      await this.load();
+      return;
+    }
     this.closeCreate();
     await this.load();
   }
+
+  canInvoice(s: SO) { return s.status === 'confirmed' || s.status === 'in_transit' || s.status === 'delivered'; }
+  goInvoice() { this.router.navigate(['/milling/accounts-receivable']); }
 
   peso(n: number) { return '₱' + Math.round(n).toLocaleString(); }
   statusLabel(s: SO['status']) {

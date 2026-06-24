@@ -23,7 +23,7 @@ interface Workspace {
         <div class="brand">
           <span class="brand-mark"><app-icon name="hexagon" [size]="22" /></span>
           <div>
-            <div class="brand-name">JKL ERP</div>
+            <div class="brand-name">RJL ERP</div>
             <div class="brand-tag">Enterprise Resource Platform</div>
           </div>
         </div>
