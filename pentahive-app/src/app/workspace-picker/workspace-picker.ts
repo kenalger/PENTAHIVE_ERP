@@ -234,7 +234,7 @@ export class WorkspacePicker {
 
   /** Workspaces hosted as a separate deployment — the card links out instead of routing in-app. */
   private readonly externalLinks: Record<string, string> = {
-    hardware: 'https://www.wvwcloud.com/login',
+    hardware: 'https://xavi.wvwcloud.com/login',
   };
 
   logoFor(code: string): string | null {
