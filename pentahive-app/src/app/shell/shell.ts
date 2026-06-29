@@ -120,15 +120,9 @@ const MILLING_NAV: NavGroup[] = [
   template: `
     <aside id="sb">
       <div class="sb-logo">
-<<<<<<< HEAD
-        <div class="sb-mark">RJL</div>
-        <div>
-          <div class="sb-name">RJL ERP</div>
-=======
         <img class="sb-mark" src="rjl-logo.png" alt="RJL" />
         <div>
           <div class="sb-name">RJL</div>
->>>>>>> 076d5e0 (udptae)
           <div class="sb-ver">{{ workspaceMeta()?.name || workspace() }} workspace</div>
         </div>
       </div>
@@ -388,11 +382,7 @@ export class Shell {
     return null;
   });
 
-<<<<<<< HEAD
-  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'RJL ERP');
-=======
   pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'RJL');
->>>>>>> 076d5e0 (udptae)
   activeGroup = computed(() => {
     const item = this.activeNavItem();
     if (!item) return 'Overview';

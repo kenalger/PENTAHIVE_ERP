@@ -13,11 +13,7 @@ import { AuthService } from '../auth.service';
           <span class="brand-mark">🔧</span>
           <div>
             <div class="brand-name">Hardware</div>
-<<<<<<< HEAD
-            <div class="brand-tag">RJL ERP Workspace · Coming Soon</div>
-=======
             <div class="brand-tag">WVW ERP Workspace · Coming Soon</div>
->>>>>>> 076d5e0 (udptae)
           </div>
         </div>
         <div class="actions">

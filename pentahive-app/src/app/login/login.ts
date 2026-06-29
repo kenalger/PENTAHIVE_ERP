@@ -11,13 +11,8 @@ import { AuthService } from '../auth.service';
       <aside class="auth-brand">
         <div class="brand-top">
           <div class="brand-mark">
-<<<<<<< HEAD
-            <span class="hex"><app-icon name="hexagon" [size]="20" /></span>
-            <span class="brand-name">RJL ERP</span>
-=======
             <img class="hex" src="wvw-logo.png" alt="WVW" />
             <span class="brand-name">WVW ERP</span>
->>>>>>> 076d5e0 (udptae)
           </div>
           <span class="brand-tag">Enterprise Resource Platform</span>
         </div>
@@ -34,11 +29,7 @@ import { AuthService } from '../auth.service';
         </div>
 
         <div class="brand-foot">
-<<<<<<< HEAD
-          <span>© {{ year }} RJL ERP</span>
-=======
           <span>© {{ year }} WVW ERP</span>
->>>>>>> 076d5e0 (udptae)
           <span class="dot-sep">•</span>
           <span>v1.0</span>
         </div>

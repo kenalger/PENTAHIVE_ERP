@@ -22,11 +22,7 @@ interface Workspace {
         <div class="brand">
           <img class="brand-mark" src="wvw-logo.png" alt="WVW" />
           <div>
-<<<<<<< HEAD
-            <div class="brand-name">RJL ERP</div>
-=======
             <div class="brand-name">WVW ERP</div>
->>>>>>> 076d5e0 (udptae)
             <div class="brand-tag">Enterprise Resource Platform</div>
           </div>
         </div>
