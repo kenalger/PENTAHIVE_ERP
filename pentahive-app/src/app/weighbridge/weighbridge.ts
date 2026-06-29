@@ -226,7 +226,7 @@ export class Weighbridge {
     this.loading.set(true);
     this.error.set(null);
     const { data, error } = await supabase
-      .from('weighbridge_tickets')
+      .from('milling_weighbridge_tickets')
       .select('id, or_no, ts, plate, customer, mode, gross, tare, net, price, payment, operator, notes')
       .order('ts', { ascending: false })
       .limit(200);
@@ -259,7 +259,7 @@ export class Weighbridge {
       operator: this.form.operator || null,
       notes: this.form.notes || null,
     };
-    const { error } = await supabase.from('weighbridge_tickets').insert(payload);
+    const { error } = await supabase.from('milling_weighbridge_tickets').insert(payload);
     this.saving.set(false);
     if (error) { this.formError.set(error.message); return; }
     this.closeCreate();

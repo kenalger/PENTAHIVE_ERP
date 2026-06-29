@@ -231,11 +231,11 @@ export class Deliveries {
     this.loading.set(true);
     this.error.set(null);
     const [del, so] = await Promise.all([
-      supabase.from('deliveries')
+      supabase.from('milling_deliveries')
         .select('id, no, so_no, customer_name, truck_no, driver, destination, dispatch_at, status')
         .order('created_at', { ascending: false }),
-      supabase.from('sales_orders')
-        .select('id, no, customers(name)')
+      supabase.from('milling_sales_orders')
+        .select('id, no, milling_customers(name)')
         .in('status', ['confirmed', 'in_transit'])
         .order('created_at', { ascending: false }),
     ]);
@@ -262,7 +262,7 @@ export class Deliveries {
     const { data: noData, error: noErr } = await supabase.rpc('next_doc_no', { p_series: 'DO' });
     if (noErr || !noData) { this.formError.set(noErr?.message || 'Failed to generate DO number'); this.saving.set(false); return; }
 
-    const { error } = await supabase.from('deliveries').insert({
+    const { error } = await supabase.from('milling_deliveries').insert({
       no: noData as string,
       so_id: this.form.so_id || null,
       so_no: this.form.so_no,
@@ -284,7 +284,7 @@ export class Deliveries {
     e.stopPropagation();
     const next: Delivery['status'] = d.status === 'scheduled' ? 'in_transit' : d.status === 'in_transit' ? 'delivered' : d.status;
     if (next === d.status) return;
-    const { error } = await supabase.from('deliveries').update({ status: next }).eq('id', d.id);
+    const { error } = await supabase.from('milling_deliveries').update({ status: next }).eq('id', d.id);
     if (error) { alert(error.message); return; }
     await this.load();
   }

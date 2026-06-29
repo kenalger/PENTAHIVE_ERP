@@ -4,9 +4,9 @@
 -- =============================================================
 -- vendo_entries — income/expense per vending machine
 -- =============================================================
-create table if not exists public.vendo_entries (
+create table if not exists public.milling_vendo_entries (
   id          uuid primary key default gen_random_uuid(),
-  vendo_id    uuid not null references public.vendos(id) on delete cascade,
+  vendo_id    uuid not null references public.milling_vendos(id) on delete cascade,
   date        date not null default current_date,
   type        text not null check (type in ('income','expense')),
   category    text,
@@ -14,19 +14,19 @@ create table if not exists public.vendo_entries (
   notes       text,
   created_at  timestamptz not null default now()
 );
-create index if not exists vendo_entries_vendo_idx on public.vendo_entries(vendo_id);
-create index if not exists vendo_entries_date_idx on public.vendo_entries(date desc);
+create index if not exists vendo_entries_vendo_idx on public.milling_vendo_entries(vendo_id);
+create index if not exists vendo_entries_date_idx on public.milling_vendo_entries(date desc);
 
-alter table public.vendo_entries enable row level security;
+alter table public.milling_vendo_entries enable row level security;
 
-drop policy if exists ve_select on public.vendo_entries;
-create policy ve_select on public.vendo_entries for select to authenticated using (public.can_access(auth.uid(), 'vendos', 'view'));
-drop policy if exists ve_insert on public.vendo_entries;
-create policy ve_insert on public.vendo_entries for insert to authenticated with check (public.can_access(auth.uid(), 'vendos', 'create'));
-drop policy if exists ve_update on public.vendo_entries;
-create policy ve_update on public.vendo_entries for update to authenticated using (public.can_access(auth.uid(), 'vendos', 'edit')) with check (public.can_access(auth.uid(), 'vendos', 'edit'));
-drop policy if exists ve_delete on public.vendo_entries;
-create policy ve_delete on public.vendo_entries for delete to authenticated using (public.can_access(auth.uid(), 'vendos', 'delete'));
+drop policy if exists ve_select on public.milling_vendo_entries;
+create policy ve_select on public.milling_vendo_entries for select to authenticated using (public.can_access(auth.uid(), 'vendos', 'view'));
+drop policy if exists ve_insert on public.milling_vendo_entries;
+create policy ve_insert on public.milling_vendo_entries for insert to authenticated with check (public.can_access(auth.uid(), 'vendos', 'create'));
+drop policy if exists ve_update on public.milling_vendo_entries;
+create policy ve_update on public.milling_vendo_entries for update to authenticated using (public.can_access(auth.uid(), 'vendos', 'edit')) with check (public.can_access(auth.uid(), 'vendos', 'edit'));
+drop policy if exists ve_delete on public.milling_vendo_entries;
+create policy ve_delete on public.milling_vendo_entries for delete to authenticated using (public.can_access(auth.uid(), 'vendos', 'delete'));
 
 -- =============================================================
 -- activity_log — generic audit trail, populated by trigger
@@ -90,11 +90,11 @@ declare t text;
 begin
   for t in
     select unnest(array[
-      'purchase_requests', 'canvasses', 'purchase_orders', 'goods_receipts',
-      'sales_orders', 'deliveries', 'sales_invoices', 'collections',
-      'inventory', 'inventory_transactions',
-      'milling_batches', 'toll_milling', 'weighbridge_tickets', 'quality_inspections',
-      'suppliers', 'customers', 'items', 'warehouses', 'vendos', 'vendo_entries',
+      'milling_purchase_requests', 'milling_canvasses', 'milling_purchase_orders', 'milling_goods_receipts',
+      'milling_sales_orders', 'milling_deliveries', 'milling_sales_invoices', 'milling_collections',
+      'milling_inventory', 'milling_inventory_transactions',
+      'milling_batches', 'toll_milling', 'milling_weighbridge_tickets', 'milling_quality_inspections',
+      'milling_suppliers', 'milling_customers', 'milling_items', 'milling_warehouses', 'milling_vendos', 'milling_vendo_entries',
       'user_access', 'access_definitions'
     ])
   loop
@@ -157,9 +157,9 @@ select
   count(*) filter (where si.status = 'overdue')::int                   as overdue_count,
   coalesce(sum(case when si.status = 'overdue'
                     then si.amount_due else 0 end), 0)::numeric(14,2) as overdue_amount
-from public.customers c
-left join public.sales_orders so on so.customer_id = c.id
-left join public.sales_invoices si on si.so_id = so.id
+from public.milling_customers c
+left join public.milling_sales_orders so on so.customer_id = c.id
+left join public.milling_sales_invoices si on si.so_id = so.id
 group by c.id, c.code, c.name, c.stream;
 
 -- 2) v_customer_ytd — sum YTD sales per customer
@@ -172,8 +172,8 @@ select
   coalesce(sum(so.total) filter (where extract(year from so.date) = extract(year from now())
                                        and so.status not in ('cancelled','credit_hold')), 0)::numeric(14,2) as ytd_sales,
   count(so.id) filter (where extract(year from so.date) = extract(year from now()))::int as ytd_order_count
-from public.customers c
-left join public.sales_orders so on so.customer_id = c.id
+from public.milling_customers c
+left join public.milling_sales_orders so on so.customer_id = c.id
 group by c.id, c.code, c.name, c.stream;
 
 -- 3) v_inventory_value_by_stream — Local vs Import inventory totals
@@ -187,7 +187,7 @@ select
   coalesce(sum(reserved_mt), 0)::numeric(14,2) as total_reserved_mt,
   coalesce(sum(available_mt), 0)::numeric(14,2)as total_available_mt,
   coalesce(sum(total_value), 0)::numeric(14,2) as total_value
-from public.inventory
+from public.milling_inventory
 group by stream;
 
 -- 4) v_revenue_daily_by_stream — daily revenue Local vs Import (for Dashboard trend chart)
@@ -199,7 +199,7 @@ select
   so.stream,
   count(*)::int                       as order_count,
   coalesce(sum(so.total), 0)::numeric(14,2) as revenue
-from public.sales_orders so
+from public.milling_sales_orders so
 where so.status not in ('cancelled')
 group by so.date, so.stream
 order by so.date desc, so.stream;

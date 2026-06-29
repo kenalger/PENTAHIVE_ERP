@@ -397,9 +397,9 @@ export class Vendos {
     this.loading.set(true);
     this.error.set(null);
     const [v, e] = await Promise.all([
-      supabase.from('vendos').select('*').order('created_at', { ascending: false }),
-      supabase.from('vendo_entries')
-        .select('id, vendo_id, date, type, category, amount, notes, vendos(name)')
+      supabase.from('milling_vendos').select('*').order('created_at', { ascending: false }),
+      supabase.from('milling_vendo_entries')
+        .select('id, vendo_id, date, type, category, amount, notes, milling_vendos(name)')
         .order('date', { ascending: false })
         .order('created_at', { ascending: false }),
     ]);
@@ -420,7 +420,7 @@ export class Vendos {
       location: this.vendo.location || null,
       notes: this.vendo.notes || null,
     };
-    const { error } = await supabase.from('vendos').insert(payload);
+    const { error } = await supabase.from('milling_vendos').insert(payload);
     this.saving.set(false);
     if (error) { this.vendoError.set(error.message); return; }
     this.closeVendo();
@@ -451,7 +451,7 @@ export class Vendos {
       amount: Number(this.entry.amount),
       notes: this.entry.notes || null,
     };
-    const { error } = await supabase.from('vendo_entries').insert(payload);
+    const { error } = await supabase.from('milling_vendo_entries').insert(payload);
     this.saving.set(false);
     if (error) { this.entryError.set(error.message); return; }
     this.closeEntry();

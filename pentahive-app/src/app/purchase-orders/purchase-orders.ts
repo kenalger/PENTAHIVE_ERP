@@ -274,14 +274,14 @@ export class PurchaseOrders {
     this.loading.set(true);
     this.error.set(null);
     const [po, sup, it] = await Promise.all([
-      supabase.from('purchase_orders')
-        .select('id, no, date, supplier_id, category, stream, total, expected_date, status, ewt_rate, ewt_amount, bir_registered, suppliers(name)')
+      supabase.from('milling_purchase_orders')
+        .select('id, no, date, supplier_id, category, stream, total, expected_date, status, ewt_rate, ewt_amount, bir_registered, milling_suppliers(name)')
         .order('created_at', { ascending: false }),
-      supabase.from('suppliers')
+      supabase.from('milling_suppliers')
         .select('id, name, bir_registered, ewt_rate, category, origin')
         .eq('status', 'active')
         .order('name'),
-      supabase.from('items')
+      supabase.from('milling_items')
         .select('id, description, uom, last_price')
         .order('description'),
     ]);
@@ -331,7 +331,7 @@ export class PurchaseOrders {
       return;
     }
 
-    const { data: poRow, error: poErr } = await supabase.from('purchase_orders').insert({
+    const { data: poRow, error: poErr } = await supabase.from('milling_purchase_orders').insert({
       no: noData as string,
       supplier_id: this.form.supplier_id,
       stream: this.form.stream,
@@ -359,7 +359,7 @@ export class PurchaseOrders {
       qty: Number(l.qty),
       unit_price: Number(l.unit_price) || 0,
     }));
-    const { error: linesErr } = await supabase.from('po_lines').insert(linePayloads);
+    const { error: linesErr } = await supabase.from('milling_po_lines').insert(linePayloads);
     if (linesErr) { this.formError.set('Header saved but lines failed: ' + linesErr.message); this.saving.set(false); return; }
 
     this.saving.set(false);
@@ -372,7 +372,7 @@ export class PurchaseOrders {
   }
   async approve(p: PO, e: Event) {
     e.stopPropagation();
-    const { error } = await supabase.from('purchase_orders').update({ status: 'approved' }).eq('id', p.id);
+    const { error } = await supabase.from('milling_purchase_orders').update({ status: 'approved' }).eq('id', p.id);
     if (error) { alert(error.message); return; }
     await this.load();
   }

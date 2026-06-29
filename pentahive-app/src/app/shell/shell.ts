@@ -120,9 +120,15 @@ const MILLING_NAV: NavGroup[] = [
   template: `
     <aside id="sb">
       <div class="sb-logo">
+<<<<<<< HEAD
         <div class="sb-mark">RJL</div>
         <div>
           <div class="sb-name">RJL ERP</div>
+=======
+        <img class="sb-mark" src="rjl-logo.png" alt="RJL" />
+        <div>
+          <div class="sb-name">RJL</div>
+>>>>>>> 076d5e0 (udptae)
           <div class="sb-ver">{{ workspaceMeta()?.name || workspace() }} workspace</div>
         </div>
       </div>
@@ -222,13 +228,9 @@ const MILLING_NAV: NavGroup[] = [
     .sb-mark {
       width: 36px; height: 36px;
       border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
+      object-fit: cover;
       box-shadow: var(--shadow);
       flex-shrink: 0;
-      background: linear-gradient(135deg, var(--gold), var(--gold-d));
-      color: var(--gold-text);
-      font-family: var(--mono);
-      font-size: 11px; font-weight: 700; letter-spacing: .5px;
     }
     .sb-name { font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: -.4px; }
     .sb-ver { font-size: 10px; color: var(--dim); letter-spacing: .8px; text-transform: uppercase; margin-top: 1px; }
@@ -386,7 +388,11 @@ export class Shell {
     return null;
   });
 
+<<<<<<< HEAD
   pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'RJL ERP');
+=======
+  pageTitle = computed(() => this.activeNavItem()?.label ?? this.workspaceMeta()?.name ?? 'RJL');
+>>>>>>> 076d5e0 (udptae)
   activeGroup = computed(() => {
     const item = this.activeNavItem();
     if (!item) return 'Overview';

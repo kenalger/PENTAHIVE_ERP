@@ -2,18 +2,22 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
-import { Icon } from '../ui/icon';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, Icon],
+  imports: [FormsModule],
   template: `
     <div class="auth-shell">
       <aside class="auth-brand">
         <div class="brand-top">
           <div class="brand-mark">
+<<<<<<< HEAD
             <span class="hex"><app-icon name="hexagon" [size]="20" /></span>
             <span class="brand-name">RJL ERP</span>
+=======
+            <img class="hex" src="wvw-logo.png" alt="WVW" />
+            <span class="brand-name">WVW ERP</span>
+>>>>>>> 076d5e0 (udptae)
           </div>
           <span class="brand-tag">Enterprise Resource Platform</span>
         </div>
@@ -30,7 +34,11 @@ import { Icon } from '../ui/icon';
         </div>
 
         <div class="brand-foot">
+<<<<<<< HEAD
           <span>© {{ year }} RJL ERP</span>
+=======
+          <span>© {{ year }} WVW ERP</span>
+>>>>>>> 076d5e0 (udptae)
           <span class="dot-sep">•</span>
           <span>v1.0</span>
         </div>
@@ -123,13 +131,10 @@ import { Icon } from '../ui/icon';
       color: #fff;
     }
     .hex {
-      display: inline-flex;
-      align-items: center; justify-content: center;
       width: 34px; height: 34px;
       border-radius: 9px;
-      background: linear-gradient(135deg, #ffffff, #cbd5e1);
+      object-fit: cover;
       box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
-      color: #0B1118;
     }
     .brand-tag {
       display: block;

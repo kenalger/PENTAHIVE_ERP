@@ -676,7 +676,7 @@ export class Admin {
       supabase.from('users')
         .select('id, email, full_name, is_admin, user_roles!user_id(roles(id, name)), user_access!user_id(access_id, access_definitions(name))')
         .order('email'),
-      supabase.from('roles').select('id, name, description').order('id'),
+      supabase.from('roles').select('id, name, description').eq('app', 'wvw').order('id'),
       supabase.from('access_definitions')
         .select('id, code, name, description, access_definition_permissions(can_view, can_create, can_edit, can_delete, can_approve, pages(code, label))')
         .order('id'),

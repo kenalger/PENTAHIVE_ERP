@@ -615,10 +615,16 @@ export class Canvasses {
   async load() {
     this.loading.set(true);
     this.error.set(null);
+<<<<<<< HEAD
     const [c, prs, sup] = await Promise.all([
       supabase.from('canvasses').select('id, no, date, pr_no, currency, vat_treatment, status, created_at').order('created_at', { ascending: false }),
       supabase.from('purchase_requests').select('id, no').eq('status', 'for_canvass').order('created_at', { ascending: false }),
       supabase.from('suppliers').select('id, code, name, bir_registered, ewt_rate, payment_terms').eq('status', 'active').order('name'),
+=======
+    const [c, prs] = await Promise.all([
+      supabase.from('milling_canvasses').select('id, no, date, pr_no, currency, vat_treatment, status, created_at').order('created_at', { ascending: false }),
+      supabase.from('milling_purchase_requests').select('id, no').eq('status', 'for_canvass').order('created_at', { ascending: false }),
+>>>>>>> 076d5e0 (udptae)
     ]);
     this.loading.set(false);
     if (c.error) { this.error.set(c.error.message); this.cdr.markForCheck(); return; }
@@ -892,10 +898,24 @@ export class Canvasses {
     this.saving.set(true);
     this.formError.set(null);
     const { data: noData, error: noErr } = await supabase.rpc('next_doc_no', { p_series: 'CNV' });
+<<<<<<< HEAD
     if (noErr || !noData) { this.formError.set(noErr?.message || 'Failed to generate canvass number'); this.saving.set(false); this.cdr.markForCheck(); return; }
     const { error } = await supabase.from('canvasses').insert({
       no: noData as string, pr_id: this.form.pr_id || null, pr_no: this.form.pr_no,
       currency: this.form.currency, vat_treatment: this.form.vat_treatment,
+=======
+    if (noErr || !noData) {
+      this.formError.set(noErr?.message || 'Failed to generate canvass number');
+      this.saving.set(false);
+      return;
+    }
+    const { error } = await supabase.from('milling_canvasses').insert({
+      no: noData as string,
+      pr_id: this.form.pr_id || null,
+      pr_no: this.form.pr_no,
+      currency: this.form.currency,
+      vat_treatment: this.form.vat_treatment,
+>>>>>>> 076d5e0 (udptae)
     });
     this.saving.set(false);
     if (error) { this.formError.set(error.message); this.cdr.markForCheck(); return; }

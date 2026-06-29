@@ -296,7 +296,7 @@ export class Customers {
     this.loading.set(true);
     this.error.set(null);
     const { data, error } = await supabase
-      .from('customers')
+      .from('milling_customers')
       .select('*')
       .order('created_at', { ascending: false });
     this.loading.set(false);
@@ -323,7 +323,7 @@ export class Customers {
       phone: this.form.phone || null,
       email: this.form.email || null,
     };
-    const { error } = await supabase.from('customers').insert(payload);
+    const { error } = await supabase.from('milling_customers').insert(payload);
     this.saving.set(false);
     if (error) { this.formError.set(error.message); return; }
     this.closeCreate();

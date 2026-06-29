@@ -223,8 +223,8 @@ export class QualityInspection {
     this.loading.set(true);
     this.error.set(null);
     const [qc, grn] = await Promise.all([
-      supabase.from('quality_inspections').select('*').order('inspected_at', { ascending: false }),
-      supabase.from('goods_receipts').select('id, no, supplier_name').order('created_at', { ascending: false }).limit(100),
+      supabase.from('milling_quality_inspections').select('*').order('inspected_at', { ascending: false }),
+      supabase.from('milling_goods_receipts').select('id, no, supplier_name').order('created_at', { ascending: false }).limit(100),
     ]);
     this.loading.set(false);
     if (qc.error) { this.error.set(qc.error.message); return; }
@@ -261,7 +261,7 @@ export class QualityInspection {
       result: this.form.result,
       notes: this.form.notes || null,
     };
-    const { error } = await supabase.from('quality_inspections').insert(payload);
+    const { error } = await supabase.from('milling_quality_inspections').insert(payload);
     this.saving.set(false);
     if (error) { this.formError.set(error.message); return; }
     this.closeCreate();

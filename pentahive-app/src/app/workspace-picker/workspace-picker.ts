@@ -3,7 +3,6 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { ThemeService } from '../theme.service';
 import { supabase } from '../supabase.client';
-import { Icon } from '../ui/icon';
 
 interface Workspace {
   code: string;
@@ -16,14 +15,18 @@ interface Workspace {
 
 @Component({
   selector: 'app-workspace-picker',
-  imports: [RouterLink, Icon],
+  imports: [RouterLink],
   template: `
     <div class="wp-shell">
       <header class="wp-head">
         <div class="brand">
-          <span class="brand-mark"><app-icon name="hexagon" [size]="22" /></span>
+          <img class="brand-mark" src="wvw-logo.png" alt="WVW" />
           <div>
+<<<<<<< HEAD
             <div class="brand-name">RJL ERP</div>
+=======
+            <div class="brand-name">WVW ERP</div>
+>>>>>>> 076d5e0 (udptae)
             <div class="brand-tag">Enterprise Resource Platform</div>
           </div>
         </div>
@@ -55,9 +58,26 @@ interface Workspace {
         } @else {
           <div class="ws-grid">
             @for (w of workspaces(); track w.code) {
-              @if (w.status === 'active') {
+              @if (externalFor(w.code); as ext) {
+                <a [href]="ext" class="ws-card active">
+                  @if (logoFor(w.code); as logo) {
+                    <img class="ws-logo" [src]="logo" [alt]="w.name" />
+                  } @else {
+                    <div class="ws-ico">{{ w.icon || '⬣' }}</div>
+                  }
+                  <div class="ws-name">{{ w.name }}</div>
+                  <div class="ws-desc">{{ w.description || 'No description.' }}</div>
+                  <div class="ws-foot">
+                    <span class="enter">Open →</span>
+                  </div>
+                </a>
+              } @else if (w.status === 'active') {
                 <a [routerLink]="['/', w.code]" class="ws-card" [class.active]="w.status === 'active'">
-                  <div class="ws-ico">{{ w.icon || '⬣' }}</div>
+                  @if (logoFor(w.code); as logo) {
+                    <img class="ws-logo" [src]="logo" [alt]="w.name" />
+                  } @else {
+                    <div class="ws-ico">{{ w.icon || '⬣' }}</div>
+                  }
                   <div class="ws-name">{{ w.name }}</div>
                   <div class="ws-desc">{{ w.description || 'No description.' }}</div>
                   <div class="ws-foot">
@@ -66,7 +86,11 @@ interface Workspace {
                 </a>
               } @else {
                 <div class="ws-card disabled" [title]="'Coming soon'">
-                  <div class="ws-ico">{{ w.icon || '⬣' }}</div>
+                  @if (logoFor(w.code); as logo) {
+                    <img class="ws-logo" [src]="logo" [alt]="w.name" />
+                  } @else {
+                    <div class="ws-ico">{{ w.icon || '⬣' }}</div>
+                  }
                   <div class="ws-name">{{ w.name }}</div>
                   <div class="ws-desc">{{ w.description || 'No description.' }}</div>
                   <div class="ws-foot">
@@ -100,10 +124,7 @@ interface Workspace {
     .brand-mark {
       width: 44px; height: 44px;
       border-radius: 12px;
-      background: linear-gradient(135deg, var(--gold), var(--gold-d));
-      color: var(--gold-text);
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: 22px; font-weight: 700;
+      object-fit: cover;
       box-shadow: var(--shadow);
     }
     .brand-name { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.4px; }
@@ -167,6 +188,14 @@ interface Workspace {
     }
     .ws-card.disabled:hover { transform: none; border-color: var(--border); box-shadow: var(--shadow); }
     .ws-ico { font-size: 40px; }
+    .ws-logo {
+      width: 56px; height: 56px;
+      border-radius: var(--r12);
+      object-fit: contain;
+      background: #fff;
+      padding: 2px;
+      box-shadow: var(--shadow);
+    }
     .ws-name { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
     .ws-desc { font-size: 12.5px; color: var(--sub); flex: 1; line-height: 1.5; }
     .ws-foot { margin-top: 8px; }
@@ -196,6 +225,25 @@ export class WorkspacePicker {
   workspaces = signal<Workspace[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
+
+  /** Per-workspace brand logos shown on the picker card (overrides the emoji icon). */
+  private readonly logos: Record<string, string> = {
+    milling: 'rjl-logo.png',
+    hardware: 'xavi-logo.jpg',
+  };
+
+  /** Workspaces hosted as a separate deployment — the card links out instead of routing in-app. */
+  private readonly externalLinks: Record<string, string> = {
+    hardware: 'https://www.wvwcloud.com/login',
+  };
+
+  logoFor(code: string): string | null {
+    return this.logos[code] ?? null;
+  }
+
+  externalFor(code: string): string | null {
+    return this.externalLinks[code] ?? null;
+  }
 
   displayName = computed(() => {
     const u = this.auth.user();

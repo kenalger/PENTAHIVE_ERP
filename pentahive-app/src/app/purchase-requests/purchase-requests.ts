@@ -216,7 +216,7 @@ export class PurchaseRequests {
     this.loading.set(true);
     this.error.set(null);
     const { data, error } = await supabase
-      .from('purchase_requests')
+      .from('milling_purchase_requests')
       .select('id, no, date, department, purpose, needed_by, status, canvass_no, po_no, total, created_at')
       .order('created_at', { ascending: false });
     this.loading.set(false);
@@ -257,7 +257,7 @@ export class PurchaseRequests {
 
     // Insert header
     const { data: prRow, error: prErr } = await supabase
-      .from('purchase_requests')
+      .from('milling_purchase_requests')
       .insert({
         no: prNo,
         department: this.form.department || null,
@@ -285,7 +285,7 @@ export class PurchaseRequests {
       qty: Number(l.qty),
       est_unit_price: Number(l.est_unit_price) || 0,
     }));
-    const { error: linesErr } = await supabase.from('pr_lines').insert(linePayloads);
+    const { error: linesErr } = await supabase.from('milling_pr_lines').insert(linePayloads);
     if (linesErr) {
       this.formError.set('Header saved but lines failed: ' + linesErr.message);
       this.saving.set(false);

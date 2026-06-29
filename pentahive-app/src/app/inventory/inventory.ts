@@ -375,10 +375,10 @@ export class Inventory {
     this.loading.set(true);
     this.error.set(null);
     const [inv, wh] = await Promise.all([
-      supabase.from('inventory')
-        .select('id, sku, product, variety_grade, warehouse_id, stream, on_hand_mt, reserved_mt, available_mt, unit_cost, total_value, reorder_pt, warehouses(name, capacity_mt)')
+      supabase.from('milling_inventory')
+        .select('id, sku, product, variety_grade, warehouse_id, stream, on_hand_mt, reserved_mt, available_mt, unit_cost, total_value, reorder_pt, milling_warehouses(name, capacity_mt)')
         .order('product'),
-      supabase.from('warehouses').select('id, name, capacity_mt').eq('status', 'active').order('name'),
+      supabase.from('milling_warehouses').select('id, name, capacity_mt').eq('status', 'active').order('name'),
     ]);
     this.loading.set(false);
     if (inv.error) { this.error.set(inv.error.message); return; }
@@ -407,7 +407,7 @@ export class Inventory {
       unit_cost: Number(this.form.unit_cost) || 0,
       reorder_pt: Number(this.form.reorder_pt) || 0,
     };
-    const { error } = await supabase.from('inventory').insert(payload);
+    const { error } = await supabase.from('milling_inventory').insert(payload);
     this.saving.set(false);
     if (error) { this.formError.set(error.message); return; }
     this.closeCreate();
@@ -442,12 +442,12 @@ export class Inventory {
 
     // Update inventory + write transaction (no atomic txn from client; best-effort sequential)
     const { error: updErr } = await supabase
-      .from('inventory')
+      .from('milling_inventory')
       .update({ on_hand_mt: newOnHand })
       .eq('id', this.adjustTargetId);
     if (updErr) { this.adjustError.set(updErr.message); this.adjusting.set(false); return; }
 
-    const { error: txErr } = await supabase.from('inventory_transactions').insert({
+    const { error: txErr } = await supabase.from('milling_inventory_transactions').insert({
       sku: this.adjust.sku,
       type: this.adjust.type,
       qty: Math.abs(impact),

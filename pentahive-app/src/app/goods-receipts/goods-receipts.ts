@@ -238,13 +238,13 @@ export class GoodsReceipts {
     this.loading.set(true);
     this.error.set(null);
     const [grn, pos, wh] = await Promise.all([
-      supabase.from('goods_receipts')
+      supabase.from('milling_goods_receipts')
         .select('id, no, date, po_no, supplier_name, qc_result, warehouse_id, status')
         .order('created_at', { ascending: false }),
-      supabase.from('purchase_orders')
-        .select('id, no, status, suppliers(name)')
+      supabase.from('milling_purchase_orders')
+        .select('id, no, status, milling_suppliers(name)')
         .in('status', ['approved', 'in_transit', 'boc_clearance']),
-      supabase.from('warehouses').select('id, name').eq('status', 'active').order('name'),
+      supabase.from('milling_warehouses').select('id, name').eq('status', 'active').order('name'),
     ]);
     this.loading.set(false);
     if (grn.error) { this.error.set(grn.error.message); return; }
@@ -262,7 +262,7 @@ export class GoodsReceipts {
     this.form.supplier_name = po?.supplier_name ?? null;
     if (!po) { this.form.lines = []; return; }
     const { data, error } = await supabase
-      .from('po_lines')
+      .from('milling_po_lines')
       .select('id, line_no, description, uom, qty')
       .eq('po_id', po.id)
       .order('line_no');
@@ -285,7 +285,7 @@ export class GoodsReceipts {
     const { data: noData, error: noErr } = await supabase.rpc('next_doc_no', { p_series: 'GRN' });
     if (noErr || !noData) { this.formError.set(noErr?.message || 'Failed to generate GRN number'); this.saving.set(false); return; }
 
-    const { data: grnRow, error: grnErr } = await supabase.from('goods_receipts').insert({
+    const { data: grnRow, error: grnErr } = await supabase.from('milling_goods_receipts').insert({
       no: noData as string,
       po_id: this.form.po_id,
       po_no: this.form.po_no,
@@ -308,13 +308,13 @@ export class GoodsReceipts {
         qty_po: Number(l.qty),
         qty_received: Number(l.qty_received) || 0,
       }));
-      const { error: linesErr } = await supabase.from('grn_lines').insert(linePayloads);
+      const { error: linesErr } = await supabase.from('milling_grn_lines').insert(linePayloads);
       if (linesErr) { this.formError.set('Header saved but lines failed: ' + linesErr.message); this.saving.set(false); return; }
     }
 
     // If posted, flip the PO to 'received'
     if (this.form.status === 'posted') {
-      await supabase.from('purchase_orders').update({ status: 'received' }).eq('id', this.form.po_id);
+      await supabase.from('milling_purchase_orders').update({ status: 'received' }).eq('id', this.form.po_id);
     }
 
     this.saving.set(false);

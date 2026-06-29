@@ -1,10 +1,116 @@
 # PENTAHIVE_ERP — Build Hand-off
 
-Date: 2026-06-03 (last updated)
+Date: 2026-06-03 (original) · 2026-06-28 (last updated)
 Source skills: `Skill/auth.md` (`ErpPentaHive`), `Skill/RJL-ERP-BUILD-TODO.md` (overall roadmap)
 Generated under: `pentahive-app/`
 
 > The full ERP roadmap and what's still open lives in `Skill/RJL-ERP-BUILD-TODO.md`. That file now marks the project-setup, Supabase wiring, and auth phases as **DONE**, and tracks remaining modules (suppliers, customers, items, procurement flow, sales flow, etc.). This hand-off documents the *implementation* — what's on disk, how to run it, what's deployed where.
+
+---
+
+## ⚡ Update — 2026-06-28 — Per-app branding: WVW (platform) vs RJL (milling) vs Xavi logos
+
+Branding was split so each layer shows its own identity. **Where this conflicts with the 2026-06-25/26 "WVW everywhere" notes, this section wins for the items listed.**
+
+### A. WVW logo is now platform-only (landing page)
+The blue-cloud **WVW** mark (`pentahive-app/public/wvw-logo.png`) is the *platform* identity and now appears **only** on the landing page — the workspace-picker header (`workspace-picker.ts`) — plus the platform-level login page, browser `<title>`, and favicon (`index.html`). It no longer brands any workspace interior.
+
+### B. Milling workspace rebranded **WVW → RJL**
+The milling workspace is its own company brand, **RJL**:
+- New asset `pentahive-app/public/rjl-logo.png` (the green/gold "RJL" rice mark, from the owner's `Downloads/milling.png`).
+- `shell/shell.ts` sidebar: logo `wvw-logo.png` → `rjl-logo.png`, name "WVW ERP" → "**RJL**", page-title fallback `'WVW ERP'` → `'RJL'`.
+- `milling/milling.ts` data labels: "WVW Byproduct" / "Jobs where WVW keeps bran/husk" / "WVW retains" → **RJL** (the toll-milling option value stays `rjl`).
+
+### C. Workspace-picker cards now support per-workspace logos + external links
+`workspace-picker.ts` gained a `logos` map + `logoFor(code)` helper. When a workspace code has a logo it renders `<img class="ws-logo">` instead of the emoji `w.icon`. Mapped: `milling → rjl-logo.png`, `hardware → xavi-logo.jpg` (`public/xavi-logo.jpg`, copied from `Downloads/xavi.jpg`). Other cards fall back to the DB emoji.
+
+Also added an `externalLinks` map + `externalFor(code)` helper. A workspace with an external link renders a clickable `<a [href]>` card (styled `active`, "Open →") **regardless of its DB `status`** — so the **hardware** card, even though it's `coming_soon` in the DB, is now a live link to **`https://www.wvwcloud.com/login`** (the separately-deployed xavi/hardware app). The template branch order is: external link → active (in-app `routerLink`) → disabled placeholder.
+
+### D. Xavi app — real logo applied
+`C:\Users\Ken\Documents\My Projects\xavi` previously used an AI-generated square `public/xavi-logo.png`. The owner's real **xavi HARDWARE** wordmark (`Downloads/xavi.jpg`) was added as `public/xavi-logo.jpg` and wired in: `shell/.../app-shell.component.ts` (sidebar mark; CSS changed to `height:22px; width:auto` so the landscape wordmark isn't squished), `features/auth/.../login-page.component.html`, and `index.html` favicon (`type="image/jpeg"`). The old `xavi-logo.png` remains on disk but is no longer referenced.
+
+> No ImageMagick on this machine (`convert` is the Windows NTFS tool, not IM), so the JPEG is used as-is rather than transcoded to PNG — references point at `.jpg`.
+
+### E. Verification (2026-06-28) — both apps on the same project, refs aligned
+- **Shared Supabase project confirmed.** Both apps point at `https://iblrotkczdrztenchnzx.supabase.co` with key `sb_publishable_ZBch-XW4yEiY9QTkDb2Izw_MA9dFmrd`: milling/WVW in `pentahive-app/src/environments/environment.ts` + `environment.development.ts`; xavi in `xavi/src/environments/environment.ts` + `environment.production.ts`. (Old xavi project `ufdknyscrmywqfmxjyfx` no longer referenced anywhere in xavi `src/`.)
+- **Logo references grep-verified, no stale paths.** Milling/WVW: `wvw-logo.png` only on platform surfaces (picker header, login, favicon); `rjl-logo.png` in the milling shell; picker `logos`/`externalLinks` maps as described above. Xavi: `xavi-logo.jpg` in sidebar/login/favicon with zero remaining `xavi-logo.png` references.
+- **Assets on disk:** `pentahive-app/public/` = `wvw-logo.png`, `rjl-logo.png`, `xavi-logo.jpg`; `xavi/public/` = `xavi-logo.jpg` (old `xavi-logo.png` left unreferenced).
+- **Open choices (not blockers):** hardware external link opens same-tab (no `target="_blank"`); xavi favicon served as JPEG (browsers sniff, renders fine).
+
+---
+
+## ⚡ Update — 2026-06-26 — Two apps, one project (`xavi` co-tenant) + key fix
+
+### A. Publishable key fixed (login was broken)
+The anon/publishable key in both `environment.ts` / `environment.development.ts` was wrong for project `iblrotkczdrztenchnzx` → every login failed with **"Invalid API key"** (GoTrue rejected the key at the gate, before checking credentials). Replaced with the project's real publishable key `sb_publishable_ZBch-XW4yEiY9QTkDb2Izw_MA9dFmrd` (verified against `/auth/v1/settings`). Outstanding item #1 below is now **DONE**. Also applied the new **WVW** app logo (`public/wvw-logo.png`) to the sidebar, login, workspace-picker, and favicon.
+
+### B. Decision: the `xavi` ERP becomes a co-tenant of this same project
+`C:\Users\Ken\Documents\My Projects\xavi` (the **ActiveOne** multi-branch POS/accounting ERP — Angular, ~80 tables, ~168 RPCs, 100+ migrations, 238 `.from()/.rpc()` call sites) currently targets its **own** Supabase project `ufdknyscrmywqfmxjyfx` (legacy `eyJ…` anon key). It is being moved onto **this** project (`iblrotkczdrztenchnzx`) so both apps share one Supabase project.
+
+**Locked decisions (from the owner):**
+1. **One project, `public` schema, full isolation by `xavi_` name-prefix.** Every xavi table (and any colliding function/trigger/sequence/view) is renamed with a `xavi_` prefix so it sits beside WVW's `milling_*` + shared infra tables without clobbering. (A dedicated `xavi` *schema* would have been far less invasive — ~1 frontend line, near-zero RPC rewrites — but the owner chose the literal name-prefix.)
+2. **No shared business data.** "Shared" means one DB / one bill only. Each app owns its own data; nothing is queried by both.
+3. **Shared auth + shared roles *table*; per-app role values & access.** *(Refined 2026-06-26 — see `Skill/unification.md` for the full design, which supersedes this bullet.)* One Supabase Auth user signs into both. **One shared `public.roles` table** holds both apps' roles, **scoped by an `app` column** (WVW: admin/manager/user; xavi: the 7 `role_t` values) — same table, different rows, each app sees only its own. **Role assignments and access control stay per-app and are NOT merged:** WVW keeps `public.user_roles` + bundles; xavi keeps `xavi_user_roles` (enum-based) + `xavi_role_permissions` + branch scoping. xavi keeps its `role_t` enum internally (no RPC rewrite) and just **mirrors** its 7 roles into `public.roles`. Hard constraint: no layout/concept/structure changes to either app — plumbing only.
+4. **Fresh re-apply + re-seed.** xavi's current project holds dev/demo data only → re-apply its 100+ migrations onto this project with the prefix baked in, re-seed, repoint xavi's env to this project + the publishable key above. **Old project `ufdknyscrmywqfmxjyfx` is abandoned** afterward.
+
+**Collision surface the prefix must cover (WVW `public` ↔ xavi `public`):**
+- **Tables** — all ~80 xavi tables → `xavi_*` (FKs, indexes, RLS targets, view JOINs, RPC bodies, grants, seeds all follow).
+- **Functions** — only generically-named ones clash. `public.set_updated_at()` is defined by **both** (bodies identical; `create or replace` means last-writer-wins — harmless, but cleanest to give xavi `xavi_set_updated_at`). xavi's business RPCs (`save_sales_order`, `post_pos_sale`, …) and `caller_has_role(role_t)` are uniquely named — no clash with WVW's `has_role`/`can_access`/`can_enter_page`/`admin_create_user`/`next_doc_no`/`log_activity`.
+- **`auth.users` triggers** — WVW owns `on_auth_user_created → handle_new_auth_user()` (creates `public.users`). xavi's `core_identity` has **no** auth trigger (its `app_users` rows are created via its own flow), so no trigger-name clash; any xavi auth trigger added later must use a non-`on_auth_user_created` name.
+- **Enums** — xavi defines ~14 enum types in `public` (`role_t`, `account_type_t`, `priority_t`, `gender_t`, …). WVW uses `text + CHECK` and defines **no** enums, so there is **no** current collision; prefixing enums is optional (open decision below).
+
+### ⛔ Open decisions before execution (low-risk, owner to confirm)
+1. **Enums + shared `set_updated_at`:** prefix them too (`xavi_role_t`, `xavi_set_updated_at`) for strict consistency, or leave unprefixed since they don't currently collide? (Leaving them is less churn; prefixing is future-proof.)
+2. **Execution method:** this is ~80 table renames across 100+ SQL files + 238 frontend call sites. Recommend a **scripted, token-boundary-aware transform** over a fixed list of xavi identifiers (not freehand edits) + a verification pass (apply to the DB, diff object counts, smoke-test the financial RPCs), because a stray replace inside an accounting RPC corrupts money math silently.
+
+### Progress (2026-06-26) — full plan in `Skill/unification.md`
+- **Stage 0 (inventory):** DONE — `xavi/docs/xavi-prefix-inventory.md` (87 tables + 9 views to prefix; excludes roles/auth.users/set_updated_at/enums/functions).
+- **Stage 1 (shared roles):** DONE & applied — `public.roles` gained an `app` column; WVW rows tagged `wvw`, xavi's 7 roles seeded as `xavi`; WVW admin query guarded with `.eq('app','wvw')`. Migration `pentahive-app/supabase/migrations/20260626000001_shared_roles_app_scope.sql`.
+- **Stage 2 (transform):** DONE — scripted token-aware rename in the **xavi repo** (`xavi/scripts/prefix-xavi.mjs` + `verify-xavi.mjs` + `fix-next-doc-no.mjs` + `fix-constraints.mjs`): 1,998 SQL refs / 107 files, 186 frontend `.from()` / 49 files. Functions NOT prefixed (so `.rpc()` unchanged) EXCEPT `next_doc_no`→`xavi_next_doc_no` (collided with WVW's overload). Fixed `rls.sql` dynamic `unnest(array[...])` table lists and 4 auto-named check constraints.
+- **Stage 3 (apply):** DONE — all 108 xavi migrations applied to `iblrotkczdrztenchnzx` in ONE transaction (`pentahive-app/scripts/apply-xavi.mjs`). Verified: 86 `xavi_` tables + 9 views live; WVW's 25 `milling_` tables + users + shared roles intact.
+- **Stage 4 (frontend repoint):** MOSTLY DONE.
+  - ✅ xavi `environment.ts` + `environment.production.ts` repointed to `https://iblrotkczdrztenchnzx.supabase.co` + publishable key `sb_publishable_ZBch-XW4yEiY9QTkDb2Izw_MA9dFmrd` (was `ufdknyscrmywqfmxjyfx` + legacy `eyJ` JWT).
+  - ✅ `xavi/src/app/core/supabase/database.types.ts` regenerated by **DB introspection** (`pentahive-app/scripts/gen-types.mjs` over DATABASE_URL — the supabase CLI's `gen types --db-url` needs Docker, and `--linked`/`--project-id` needs a Supabase access token; xavi also had no `node_modules`, so `npm install` was run). Output: 123 tables (incl. WVW's), 14 views, 100 functions, 15 enums. Functions are typed permissively (`Args: Record<string,unknown>`, `Returns: unknown`) so all `.rpc()` compile; tables/views/enums are accurate. **Regenerate properly with `npm run db:types` once Docker or a Supabase access token is available.**
+  - ✅ Fixed 5 TS type-index refs the `.from()` transform missed (`Database['public']['Tables']['<old>']` → `['xavi_<old>']`) via `xavi/scripts/fix-type-index.mjs`.
+  - ⏳ `npm run build` (xavi) running to verify compilation — **confirm result before declaring Stage 4 done.**
+  - TODO after build passes: retire old project `ufdknyscrmywqfmxjyfx`.
+
+### Admin login on the shared project (2026-06-26)
+`admin@gmail.com` already existed on `iblrotkczdrztenchnzx` (from the re-applied `20260525000002_seed_admin_user.sql`, originally password `123456`). Password was **updated to `12345678`** via direct SQL (`extensions.crypt(...,gen_salt('bf'))`), `email_confirmed_at` set, `must_change_password=false`, `is_admin=true`, and the `admin` role (app=`wvw`) assignment ensured. Verified end-to-end: a direct `POST /auth/v1/token?grant_type=password` returns a valid session. (If the app shows "Invalid login credentials", it's a typed-password mismatch — the value is 8 chars: `12345678`.)
+
+---
+
+## ⚡ Update — 2026-06-25
+
+Three significant changes since the original hand-off. **Where this section conflicts with details below, this section wins** (older sections describe the original Supabase project and pre-rename table names).
+
+### 1. Rebrand → **"WVW ERP"**
+The UI brand name is now **WVW ERP**. History: `PentaHive` → `JKL` (a mistaken interim name) → `RJL` → **`WVW`**. Updated across all display titles/labels: `index.html` `<title>`, `shell.ts` (sidebar mark/name + page-title fallback), `login.ts`, `workspace-picker.ts`, `hardware.ts`, `shared/app-shell.ts`, `styles.css` header. The npm/package name is still `pentahive-app`, and the repo dir is still `PENTAHIVE_ERP`.
+
+### 2. New Supabase project → `iblrotkczdrztenchnzx`
+The old project (`zpfkhcnxtiyojodtmepn`) was abandoned (DNS no longer resolves). The app now targets a **new project**:
+
+| | Value |
+|---|---|
+| Project ref | `iblrotkczdrztenchnzx` |
+| URL | `https://iblrotkczdrztenchnzx.supabase.co` |
+| Pooler host | `aws-1-ap-southeast-1.pooler.supabase.com` (Singapore) |
+| Pooler port | `5432` (session pooler) |
+| Pooler user | `postgres.iblrotkczdrztenchnzx` |
+
+`supabaseUrl` was updated in both `environment.ts` and `environment.development.ts`, and `pentahive-app/.env`'s `DATABASE_URL` points at the new pooler. **All 16 migrations were applied** to the new DB → **37 tables + 5 views** live. Apply helper: `node --env-file=.env scripts/apply-with-retry.mjs` (retries the pooler connection, which lags ~1–2 min after a DB-password reset; pass a start-filename to apply only from that migration onward).
+
+### 3. Milling-domain tables prefixed with `milling_`
+The 24 milling-workspace business tables were renamed with a `milling_` prefix (e.g. `sales_orders` → `milling_sales_orders`, `customers` → `milling_customers`, `inventory` → `milling_inventory`, `purchase_orders` → `milling_purchase_orders`). Updated everywhere: migration DDL (FKs, indexes, RLS targets, view JOINs, the audit-trigger table list) **and** the Angular code (50 `.from()` calls + 6 embedded-join `.select()` refs).
+
+- **Unchanged (no prefix):** the already-milling-named `milling_batches` and `toll_milling`; and the shared RBAC/infra tables `users`, `roles`, `user_roles`, `pages`, `access_definitions`, `access_definition_permissions`, `user_access`, `workspaces`, `doc_counters`, `activity_log`, `alerts`.
+- **Page codes are NOT table names** — the quoted page codes (`'suppliers'`, `'inventory'`, …) in `pages`/access-bundle seeds were deliberately left untouched; route guards still reference them via `data: { pageCode }`.
+
+### ⛔ Outstanding before the app runs against the new project
+1. **Anon/publishable key** — `environment.ts` / `environment.development.ts` still hold the *old* project's key. Paste the new project's `sb_publishable_…` (Dashboard → Settings → API) into both.
+2. **Admin auth user** — the `seed_admin_user` migration only seeded the `public.users` profile row. On this fresh project the **Supabase Auth** user `admin@gmail.com` does not exist yet — create it (Dashboard → Authentication → Users → Add user, Auto-Confirm) or via the in-app admin flow. All `admin@gmail.com` / `123456` references below are historical (from the old project).
+
+---
 
 ## End-to-end verification checklist
 
@@ -368,14 +474,12 @@ For DB access from Angular, keep going through `supabase-js` (which talks to Pos
 
 ### Connection details used
 
-- Host: `aws-1-ap-southeast-2.pooler.supabase.com` (Sydney region pooler)
-- Port: `6543` — **transaction pooler**
-- User: `postgres.zpfkhcnxtiyojodtmepn`
+- Host: `aws-1-ap-southeast-1.pooler.supabase.com` (Singapore region pooler) *(was `ap-southeast-2` on the old project — see 2026-06-25 update)*
+- Port: `5432` — **session pooler**
+- User: `postgres.iblrotkczdrztenchnzx`
 - DB: `postgres`
 
-Because port 6543 is the **transaction pooler** (PgBouncer in transaction mode), `db.js` passes `{ prepare: false }` to `postgres()`. Without it, prepared statements break across pooled connections. The snippet you pasted omitted this — I added it on purpose; it's a known footgun.
-
-If you need persistent connections, prepared statements, or `LISTEN/NOTIFY`, switch to port `5432` (direct connection) instead.
+`db.js` passes `{ prepare: false }` to `postgres()` — required for the transaction pooler (port 6543) and harmless on the session pooler (5432). The direct connection (`db.<ref>.supabase.co:5432`) is IPv6-only on this project and won't resolve on an IPv4 network, so the pooler is the only viable path here.
 
 ### Quick sanity test
 
@@ -389,7 +493,7 @@ Should print a single row with the current Postgres time, then exit.
 
 ## Schema — `public.users` (applied to the live DB)
 
-The first ERP migration was written **and applied** to your Supabase project (`zpfkhcnxtiyojodtmepn`) via the `db.js` Postgres client. Migration file: `pentahive-app/supabase/migrations/20260525000001_init_users.sql`.
+The first ERP migration was written **and applied** to your Supabase project (originally `zpfkhcnxtiyojodtmepn`; re-applied to the current project `iblrotkczdrztenchnzx` on 2026-06-25) via the `db.js` Postgres client. Migration file: `pentahive-app/supabase/migrations/20260525000001_init_users.sql`.
 
 ### Shape
 
@@ -536,7 +640,7 @@ Registered the hosted Supabase MCP server at project scope:
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=zpfkhcnxtiyojodtmepn"
+      "url": "https://mcp.supabase.com/mcp?project_ref=iblrotkczdrztenchnzx"
     }
   }
 }
@@ -674,8 +778,8 @@ When a new module page comes online, just add a row to `public.pages` — no sch
 **`public.can_access(uid, page_code, action) → boolean`** — action-level check, for button gating and RLS on other tables.
 
 ```sql
--- inside an RLS policy on, say, sales_orders:
-create policy sales_orders_approve on public.sales_orders
+-- inside an RLS policy on, say, milling_sales_orders:
+create policy sales_orders_approve on public.milling_sales_orders
   for update to authenticated
   using (public.can_access(auth.uid(), 'sales-orders', 'approve'));
 ```

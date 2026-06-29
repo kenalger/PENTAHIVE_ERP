@@ -5,12 +5,12 @@
 -- =============================================================
 -- inventory  +  inventory_transactions
 -- =============================================================
-create table if not exists public.inventory (
+create table if not exists public.milling_inventory (
   id            uuid primary key default gen_random_uuid(),
   sku           text unique not null,
   product       text not null,
   variety_grade text,
-  warehouse_id  uuid references public.warehouses(id) on delete set null,
+  warehouse_id  uuid references public.milling_warehouses(id) on delete set null,
   stream        text not null default 'local' check (stream in ('local','import')),
   on_hand_mt    numeric(14,2) not null default 0,
   reserved_mt   numeric(14,2) not null default 0,
@@ -21,14 +21,14 @@ create table if not exists public.inventory (
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
-create index if not exists inv_warehouse_idx on public.inventory(warehouse_id);
-create index if not exists inv_stream_idx on public.inventory(stream);
+create index if not exists inv_warehouse_idx on public.milling_inventory(warehouse_id);
+create index if not exists inv_stream_idx on public.milling_inventory(stream);
 
-drop trigger if exists inv_updated_at on public.inventory;
-create trigger inv_updated_at before update on public.inventory
+drop trigger if exists inv_updated_at on public.milling_inventory;
+create trigger inv_updated_at before update on public.milling_inventory
   for each row execute function public.set_updated_at();
 
-create table if not exists public.inventory_transactions (
+create table if not exists public.milling_inventory_transactions (
   id            uuid primary key default gen_random_uuid(),
   sku           text not null,                            -- not FK so historical rows survive item deletes
   type          text not null check (type in ('receipt','dispatch','adjust','transfer-in','transfer-out')),
@@ -38,30 +38,30 @@ create table if not exists public.inventory_transactions (
   notes         text,
   ts            timestamptz not null default now()
 );
-create index if not exists inv_tx_sku_idx on public.inventory_transactions(sku);
-create index if not exists inv_tx_ts_idx on public.inventory_transactions(ts desc);
+create index if not exists inv_tx_sku_idx on public.milling_inventory_transactions(sku);
+create index if not exists inv_tx_ts_idx on public.milling_inventory_transactions(ts desc);
 
-alter table public.inventory enable row level security;
-alter table public.inventory_transactions enable row level security;
+alter table public.milling_inventory enable row level security;
+alter table public.milling_inventory_transactions enable row level security;
 
-drop policy if exists inv_select on public.inventory;
-create policy inv_select on public.inventory for select to authenticated using (public.can_access(auth.uid(), 'inventory', 'view'));
-drop policy if exists inv_insert on public.inventory;
-create policy inv_insert on public.inventory for insert to authenticated with check (public.can_access(auth.uid(), 'inventory', 'create'));
-drop policy if exists inv_update on public.inventory;
-create policy inv_update on public.inventory for update to authenticated using (public.can_access(auth.uid(), 'inventory', 'edit')) with check (public.can_access(auth.uid(), 'inventory', 'edit'));
-drop policy if exists inv_delete on public.inventory;
-create policy inv_delete on public.inventory for delete to authenticated using (public.can_access(auth.uid(), 'inventory', 'delete'));
+drop policy if exists inv_select on public.milling_inventory;
+create policy inv_select on public.milling_inventory for select to authenticated using (public.can_access(auth.uid(), 'inventory', 'view'));
+drop policy if exists inv_insert on public.milling_inventory;
+create policy inv_insert on public.milling_inventory for insert to authenticated with check (public.can_access(auth.uid(), 'inventory', 'create'));
+drop policy if exists inv_update on public.milling_inventory;
+create policy inv_update on public.milling_inventory for update to authenticated using (public.can_access(auth.uid(), 'inventory', 'edit')) with check (public.can_access(auth.uid(), 'inventory', 'edit'));
+drop policy if exists inv_delete on public.milling_inventory;
+create policy inv_delete on public.milling_inventory for delete to authenticated using (public.can_access(auth.uid(), 'inventory', 'delete'));
 
-drop policy if exists inv_tx_select on public.inventory_transactions;
-create policy inv_tx_select on public.inventory_transactions for select to authenticated using (public.can_access(auth.uid(), 'inventory', 'view'));
-drop policy if exists inv_tx_write on public.inventory_transactions;
-create policy inv_tx_write on public.inventory_transactions for all to authenticated using (public.can_access(auth.uid(), 'inventory', 'edit')) with check (public.can_access(auth.uid(), 'inventory', 'edit'));
+drop policy if exists inv_tx_select on public.milling_inventory_transactions;
+create policy inv_tx_select on public.milling_inventory_transactions for select to authenticated using (public.can_access(auth.uid(), 'inventory', 'view'));
+drop policy if exists inv_tx_write on public.milling_inventory_transactions;
+create policy inv_tx_write on public.milling_inventory_transactions for all to authenticated using (public.can_access(auth.uid(), 'inventory', 'edit')) with check (public.can_access(auth.uid(), 'inventory', 'edit'));
 
 -- =============================================================
 -- weighbridge_tickets
 -- =============================================================
-create table if not exists public.weighbridge_tickets (
+create table if not exists public.milling_weighbridge_tickets (
   id          uuid primary key default gen_random_uuid(),
   or_no       text unique not null,
   ts          timestamptz not null default now(),
@@ -77,18 +77,18 @@ create table if not exists public.weighbridge_tickets (
   notes       text,
   created_at  timestamptz not null default now()
 );
-create index if not exists wt_ts_idx on public.weighbridge_tickets(ts desc);
+create index if not exists wt_ts_idx on public.milling_weighbridge_tickets(ts desc);
 
-alter table public.weighbridge_tickets enable row level security;
+alter table public.milling_weighbridge_tickets enable row level security;
 
-drop policy if exists wt_select on public.weighbridge_tickets;
-create policy wt_select on public.weighbridge_tickets for select to authenticated using (public.can_access(auth.uid(), 'weighbridge', 'view'));
-drop policy if exists wt_insert on public.weighbridge_tickets;
-create policy wt_insert on public.weighbridge_tickets for insert to authenticated with check (public.can_access(auth.uid(), 'weighbridge', 'create'));
-drop policy if exists wt_update on public.weighbridge_tickets;
-create policy wt_update on public.weighbridge_tickets for update to authenticated using (public.can_access(auth.uid(), 'weighbridge', 'edit')) with check (public.can_access(auth.uid(), 'weighbridge', 'edit'));
-drop policy if exists wt_delete on public.weighbridge_tickets;
-create policy wt_delete on public.weighbridge_tickets for delete to authenticated using (public.can_access(auth.uid(), 'weighbridge', 'delete'));
+drop policy if exists wt_select on public.milling_weighbridge_tickets;
+create policy wt_select on public.milling_weighbridge_tickets for select to authenticated using (public.can_access(auth.uid(), 'weighbridge', 'view'));
+drop policy if exists wt_insert on public.milling_weighbridge_tickets;
+create policy wt_insert on public.milling_weighbridge_tickets for insert to authenticated with check (public.can_access(auth.uid(), 'weighbridge', 'create'));
+drop policy if exists wt_update on public.milling_weighbridge_tickets;
+create policy wt_update on public.milling_weighbridge_tickets for update to authenticated using (public.can_access(auth.uid(), 'weighbridge', 'edit')) with check (public.can_access(auth.uid(), 'weighbridge', 'edit'));
+drop policy if exists wt_delete on public.milling_weighbridge_tickets;
+create policy wt_delete on public.milling_weighbridge_tickets for delete to authenticated using (public.can_access(auth.uid(), 'weighbridge', 'delete'));
 
 -- =============================================================
 -- milling_batches  (internal milling)
@@ -168,10 +168,10 @@ create policy tm_delete on public.toll_milling for delete to authenticated using
 -- =============================================================
 -- quality_inspections
 -- =============================================================
-create table if not exists public.quality_inspections (
+create table if not exists public.milling_quality_inspections (
   id              uuid primary key default gen_random_uuid(),
   qc_no           text unique not null,
-  grn_id          uuid references public.goods_receipts(id) on delete set null,
+  grn_id          uuid references public.milling_goods_receipts(id) on delete set null,
   grn_no          text,
   supplier_name   text,
   grade           text,
@@ -184,16 +184,16 @@ create table if not exists public.quality_inspections (
   notes           text,
   inspected_at    timestamptz not null default now()
 );
-create index if not exists qi_result_idx on public.quality_inspections(result);
-create index if not exists qi_inspected_idx on public.quality_inspections(inspected_at desc);
+create index if not exists qi_result_idx on public.milling_quality_inspections(result);
+create index if not exists qi_inspected_idx on public.milling_quality_inspections(inspected_at desc);
 
-alter table public.quality_inspections enable row level security;
+alter table public.milling_quality_inspections enable row level security;
 
-drop policy if exists qi_select on public.quality_inspections;
-create policy qi_select on public.quality_inspections for select to authenticated using (public.can_access(auth.uid(), 'quality-inspection', 'view'));
-drop policy if exists qi_insert on public.quality_inspections;
-create policy qi_insert on public.quality_inspections for insert to authenticated with check (public.can_access(auth.uid(), 'quality-inspection', 'create'));
-drop policy if exists qi_update on public.quality_inspections;
-create policy qi_update on public.quality_inspections for update to authenticated using (public.can_access(auth.uid(), 'quality-inspection', 'edit')) with check (public.can_access(auth.uid(), 'quality-inspection', 'edit'));
-drop policy if exists qi_delete on public.quality_inspections;
-create policy qi_delete on public.quality_inspections for delete to authenticated using (public.can_access(auth.uid(), 'quality-inspection', 'delete'));
+drop policy if exists qi_select on public.milling_quality_inspections;
+create policy qi_select on public.milling_quality_inspections for select to authenticated using (public.can_access(auth.uid(), 'quality-inspection', 'view'));
+drop policy if exists qi_insert on public.milling_quality_inspections;
+create policy qi_insert on public.milling_quality_inspections for insert to authenticated with check (public.can_access(auth.uid(), 'quality-inspection', 'create'));
+drop policy if exists qi_update on public.milling_quality_inspections;
+create policy qi_update on public.milling_quality_inspections for update to authenticated using (public.can_access(auth.uid(), 'quality-inspection', 'edit')) with check (public.can_access(auth.uid(), 'quality-inspection', 'edit'));
+drop policy if exists qi_delete on public.milling_quality_inspections;
+create policy qi_delete on public.milling_quality_inspections for delete to authenticated using (public.can_access(auth.uid(), 'quality-inspection', 'delete'));

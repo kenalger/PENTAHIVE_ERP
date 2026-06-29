@@ -272,11 +272,11 @@ export class SalesOrders {
     this.loading.set(true);
     this.error.set(null);
     const [so, cust, it] = await Promise.all([
-      supabase.from('sales_orders')
-        .select('id, no, date, customer_id, stream, total, status, delivery_date, customers(name)')
+      supabase.from('milling_sales_orders')
+        .select('id, no, date, customer_id, stream, total, status, delivery_date, milling_customers(name)')
         .order('created_at', { ascending: false }),
-      supabase.from('customers').select('id, name, stream, credit_limit, ar_balance, status').order('name'),
-      supabase.from('items').select('id, description, uom, last_price').order('description'),
+      supabase.from('milling_customers').select('id, name, stream, credit_limit, ar_balance, status').order('name'),
+      supabase.from('milling_items').select('id, description, uom, last_price').order('description'),
     ]);
     this.loading.set(false);
     if (so.error) { this.error.set(so.error.message); return; }
@@ -333,7 +333,7 @@ export class SalesOrders {
     const { data: noData, error: noErr } = await supabase.rpc('next_doc_no', { p_series: 'SO' });
     if (noErr || !noData) { this.formError.set(noErr?.message || 'Failed to generate SO number'); this.saving.set(false); return; }
 
-    const { data: soRow, error: soErr } = await supabase.from('sales_orders').insert({
+    const { data: soRow, error: soErr } = await supabase.from('milling_sales_orders').insert({
       no: noData as string,
       customer_id: this.form.customer_id,
       stream: this.form.stream,
@@ -354,7 +354,7 @@ export class SalesOrders {
       qty_bags: Number(l.qty_bags),
       price_per_bag: Number(l.price_per_bag) || 0,
     }));
-    const { error: linesErr } = await supabase.from('so_lines').insert(linePayloads);
+    const { error: linesErr } = await supabase.from('milling_so_lines').insert(linePayloads);
     if (linesErr) { this.formError.set('Header saved but lines failed: ' + linesErr.message); this.saving.set(false); return; }
 
     this.saving.set(false);

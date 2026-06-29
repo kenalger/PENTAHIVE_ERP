@@ -193,7 +193,7 @@ export class Items {
     this.loading.set(true);
     this.error.set(null);
     const { data, error } = await supabase
-      .from('items')
+      .from('milling_items')
       .select('id, code, description, uom, category, last_price, last_canvass_date')
       .order('created_at', { ascending: false });
     this.loading.set(false);
@@ -215,7 +215,7 @@ export class Items {
       ...this.form,
       last_price: Number(this.form.last_price) || null,
     };
-    const { error } = await supabase.from('items').insert(payload);
+    const { error } = await supabase.from('milling_items').insert(payload);
     this.saving.set(false);
     if (error) { this.formError.set(error.message); return; }
     this.closeCreate();

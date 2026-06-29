@@ -17,7 +17,7 @@ interface NavItem {
       <aside class="side">
         <div class="side-brand">
           <span class="hex">⬣</span>
-          <span class="name">PentaHive</span>
+          <span class="name">WVW ERP</span>
         </div>
 
         <nav class="side-nav">

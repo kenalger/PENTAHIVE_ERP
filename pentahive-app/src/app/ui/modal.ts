@@ -19,8 +19,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
   styles: `
     .modal-bg {
       position: fixed; inset: 0;
-      background: rgba(6,10,15,.7);
-      backdrop-filter: blur(4px);
+      background: transparent;
       z-index: 50;
       display: flex; align-items: center; justify-content: center;
       padding: 20px;

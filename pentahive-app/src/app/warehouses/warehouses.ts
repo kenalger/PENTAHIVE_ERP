@@ -203,7 +203,7 @@ export class Warehouses {
   async load() {
     this.loading.set(true);
     this.error.set(null);
-    const { data, error } = await supabase.from('warehouses').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('milling_warehouses').select('*').order('created_at', { ascending: false });
     this.loading.set(false);
     if (error) { this.error.set(error.message); return; }
     this.rows.set((data ?? []) as Warehouse[]);
@@ -224,7 +224,7 @@ export class Warehouses {
       capacity_mt: Number(this.form.capacity_mt) || null,
       location: this.form.location || null,
     };
-    const { error } = await supabase.from('warehouses').insert(payload);
+    const { error } = await supabase.from('milling_warehouses').insert(payload);
     this.saving.set(false);
     if (error) { this.formError.set(error.message); return; }
     this.closeCreate();
